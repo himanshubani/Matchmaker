@@ -27,7 +27,7 @@ function App() {
   }, [shortlisted]);
 
   const submitProfile = async () => {
-    await axios.post('http://localhost:5000/users', {
+    await axios.post('https://matchmaker-sgg2.onrender.com/users', {
       name,
       age: parseInt(age),
       interests: interests.split(',').map(i => i.trim())
@@ -36,7 +36,7 @@ function App() {
   };
 
   const findMatches = async () => {
-    const res = await axios.get(`http://localhost:5000/matches/${username}`);
+    const res = await axios.get(`https://matchmaker-sgg2.onrender.com/matches/${username}`);
     setMatches(res.data);
     setHasSearched(true);
   };
