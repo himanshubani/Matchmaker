@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Vite output
+dist/
+
+# Logs
+npm-debug.log*
