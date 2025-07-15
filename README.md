@@ -13,6 +13,13 @@ The backend is built using **Node.js / Express** .
 
 ---
 
+## 🚀 Live Demo
+
+- **Frontend**: https://matchmaker-rose.vercel.app/
+- **Backend API**: https://matchmaker-sgg2.onrender.com
+
+---
+
 ## 🚀 Setup Instructions
 
 ### ⚙️ Prerequisites
