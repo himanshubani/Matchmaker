@@ -1,152 +1,219 @@
-namespace dotnetapp.Models
-{
-    public class Student
-    {
-        public int Studentld { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public int Age { get; set; }
-        public string Grade { get; set; } = string.Empty;
-    }
-}
-
-using dotnetapp.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-
-namespace dotnetapp.Services
+using System.Threading.Tasks;
+ 
+namespace dotnetapp.Models
 {
-    public class StudentService
+    public class MobilePhone
     {
-        private readonly List<Student> students = new List<Student>
-        {
-            new Student { Studentld = 1, Name = "Alice", Age = 18, Grade = "A" },
-            new Student { Studentld = 2, Name = "Bob", Age = 17, Grade = "B" },
-            new Student { Studentld = 3, Name = "Charlie", Age = 16, Grade = "C" }
-        };
-
-        public IEnumerable<Student> GetAllStudents()
-        {
-            return students;
-        }
-
-        public Student? GetStudentByld(int studentld)
-        {
-            return students.FirstOrDefault(s => s.Studentld == studentld);
-        }
-
-        public void CreateStudent(Student newStudent)
-        {
-            students.Add(newStudent);
-        }
-
-        public bool UpdateStudent(int studentld, Student updatedStudent)
-        {
-            var existingStudent = students.FirstOrDefault(s => s.Studentld == studentld);
-            if (existingStudent == null)
-            {
-                return false;
-            }
-
-            existingStudent.Name = updatedStudent.Name;
-            existingStudent.Age = updatedStudent.Age;
-            existingStudent.Grade = updatedStudent.Grade;
-            return true;
-        }
-
-        public bool DeleteStudent(int studentld)
-        {
-            var existingStudent = students.FirstOrDefault(s => s.Studentld == studentld);
-            if (existingStudent == null)
-            {
-                return false;
-            }
-
-            students.Remove(existingStudent);
-            return true;
-        }
+        public int MobilePhoneId{get;set;}
+        public string Brand{get;set;}
+        public string Model{get;set;}
+        public decimal Price{get;set;}
+        public int StockQuantity{get;set;}
     }
 }
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+ 
+namespace dotnetapp.Models
+{
+    public class MobilePhone
+    {
+        public int MobilePhoneId{get;set;}
+        public string Brand{get;set;}
+        public string Model{get;set;}
+        public decimal Price{get;set;}
+        public int StockQuantity{get;set;}
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using dotnetapp.Models;
 using dotnetapp.Services;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Linq;
-
+using Microsoft.Extensions.Logging;
+ 
 namespace dotnetapp.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class StudentController : ControllerBase
+    public class MobilePhoneController : Controller
     {
-        private readonly StudentService _studentService;
-
-        public StudentController(StudentService studentService)
-        {
-            _studentService = studentService;
+        public IMobilePhoneService service;
+       public MobilePhoneController(IMobilePhoneService service)
+       {
+        this.service=service;
+       }
+     
+       [HttpGet]
+       public IActionResult GetAllPhones(){
+        return Ok(service.GetMobilePhones());
+       }
+       [HttpGet("{id}")]
+       public IActionResult GetMobilePhoneById(int id){
+        if(service.GetMobilePhone(id)==null){
+   return NotFound();
         }
-
-        [HttpGet]
-        public ActionResult<IEnumerable<Student>> GetAllStudents()
-        {
-            var list = _studentService.GetAllStudents().ToList();
-            if (!list.Any())
-            {
-                return NoContent();
-            }
-            return Ok(list);
+        return Ok(service.GetMobilePhone(id));
+       }
+       [HttpPost]
+       public IActionResult AddMobilePhone(MobilePhone mobilePhone){
+        MobilePhone mb=service.SaveMobilePhone(mobilePhone);
+        return CreatedAtAction("AddMobilePhone",mobilePhone);
+       }
+       [HttpPut("{id}")]
+       public IActionResult UpdateMobilePhone(int id,MobilePhone mobilePhone){
+         if(service.GetMobilePhone(id)==null){
+   return NotFound();
         }
-
-        [HttpGet("{studentld}")]
-        public ActionResult<Student> GetStudentByld(int studentld)
-        {
-            var student = _studentService.GetStudentByld(studentld);
-            if (student == null)
-            {
-                return NotFound();
-            }
-            return Ok(student);
+        service.UpdateMobilePhone(id,mobilePhone);
+        return NoContent();
+       }
+       [HttpDelete("{id}")]
+       public IActionResult DeleteMobilePhone(int id){
+          if(service.GetMobilePhone(id)==null){
+   return NotFound();
         }
-
-        [HttpPost]
-        public ActionResult<Student> CreateStudent([FromBody] Student newStudent)
-        {
-            if (newStudent == null || string.IsNullOrWhiteSpace(newStudent.Name))
-            {
-                return BadRequest();
-            }
-
-            _studentService.CreateStudent(newStudent);
-            return CreatedAtAction(nameof(GetStudentByld), new { studentld = newStudent.Studentld }, newStudent);
-        }
-
-        [HttpPut("{studentld}")]
-        public IActionResult UpdateStudent(int studentld, [FromBody] Student updatedStudent)
-        {
-            if (updatedStudent == null)
-            {
-                return BadRequest();
-            }
-
-            var success = _studentService.UpdateStudent(studentld, updatedStudent);
-            if (!success)
-            {
-                return NotFound();
-            }
+        if(service.DeleteMobilePhone(id)){
             return NoContent();
         }
-
-        [HttpDelete("{studentld}")]
-        public IActionResult DeleteStudent(int studentld)
+        return NotFound();
+       }
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using dotnetapp.Models;
+ 
+namespace dotnetapp.Repository
+{
+    public class MobilePhoneRepository
+    {
+        public MobilePhoneRepository()
         {
-            var success = _studentService.DeleteStudent(studentld);
-            if (!success)
-            {
-                return NotFound();
-            }
-            return NoContent();
+           
+        }
+        public static List<MobilePhone>mobiles{get;set;}=new List<MobilePhone>();
+        public MobilePhone SaveMobilePhone(MobilePhone mobilePhone){
+          mobilePhone.MobilePhoneId=mobiles.Count()+1;
+          mobiles.Add(mobilePhone);
+          return mobilePhone;
+        }
+        public List<MobilePhone> GetMobilePhones(){
+            return mobiles;
+        }
+        public MobilePhone UpdateMobilePhone(int id,MobilePhone mobilePhone){
+            MobilePhone ph=mobiles.FirstOrDefault(m=>m.MobilePhoneId==id);
+            ph=mobilePhone;
+            return ph;
+        }
+        public bool DeleteMobilePhone(int id){
+                        MobilePhone ph=mobiles.FirstOrDefault(m=>m.MobilePhoneId==id);
+                        mobiles.Remove(ph);
+                        return true;
+                   
+        }
+        public MobilePhone GetMobilePhone(int id){
+              return mobiles.FirstOrDefault(m=>m.MobilePhoneId==id);
         }
     }
 }
-
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using dotnetapp.Models;
+ 
+namespace dotnetapp.Services
+{
+    public interface IMobilePhoneService
+    {
+        List<MobilePhone> GetMobilePhones();
+        MobilePhone GetMobilePhone(int id);
+        MobilePhone SaveMobilePhone(MobilePhone mobilePhone);
+        MobilePhone UpdateMobilePhone(int id,MobilePhone mobilePhone);
+        bool DeleteMobilePhone(int id);
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using dotnetapp.Models;
+using dotnetapp.Repository;
+ 
+namespace dotnetapp.Services
+{
+    public class MobilePhoneService:IMobilePhoneService
+    {
+        public MobilePhoneRepository repository;
+        public MobilePhoneService(MobilePhoneRepository repository)
+        {
+            this.repository=repository;
+           
+        }
+        public MobilePhoneService(){
+           
+        }
+        public List<MobilePhone> GetMobilePhones(){
+         return repository.GetMobilePhones();
+        }
+        public MobilePhone GetMobilePhone(int id){
+            return repository.GetMobilePhone(id);
+        }
+        public MobilePhone SaveMobilePhone(MobilePhone mobilePhone){
+            return repository.SaveMobilePhone(mobilePhone);
+        }
+        public MobilePhone UpdateMobilePhone(int id,MobilePhone mobilePhone){
+            return repository.UpdateMobilePhone(id,mobilePhone);
+        }
+        public bool DeleteMobilePhone(int id){
+            return repository.DeleteMobilePhone(id);
+        }
+       
+    }
+}
+ 
+ 
+using dotnetapp.Repository;
+using dotnetapp.Services;
+ 
+var builder = WebApplication.CreateBuilder(args);
+ 
+// Add Event services to the container.
+ 
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IMobilePhoneService,MobilePhoneService>();
+builder.Services.AddScoped<MobilePhoneRepository>();
+var app = builder.Build();
+ 
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+ 
+app.UseHttpsRedirection();
+ 
+app.UseAuthorization();
+ 
+app.MapControllers();
+ 
+app.Run();
+ 
+ 
