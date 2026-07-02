@@ -2,80 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Information</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Array Operations</title>
 </head>
 <body>
 
-    <h2>User Information</h2>
+    <h1>Array Operations</h1>
 
-    <label for="nameInput">Enter name:</label>
-    <br>
-    <input type="text" id="nameInput">
+    <label>Enter Number 1*:</label>
+    <input type="number" id="num1">
     <br><br>
 
-    <label for="ageInput">Enter age:</label>
-    <br>
-    <input type="number" id="ageInput">
+    <label>Enter Number 2*:</label>
+    <input type="number" id="num2">
     <br><br>
 
-    <label for="arrayInput">Enter hobbies (comma-separated):</label>
-    <br>
-    <input type="text" id="arrayInput">
+    <label>Enter Number 3*:</label>
+    <input type="number" id="num3">
     <br><br>
 
-    <label for="isStudentSelect">Are you a student? (Select true/false):</label>
-    <br>
-    <select id="isStudentSelect">
-        <option value="true">True</option>
-        <option value="false" selected>False</option>
-    </select>
+    <label>Enter Number 4*:</label>
+    <input type="number" id="num4">
     <br><br>
 
-    <button id="showInfoButton">Show Information</button>
+    <label>Enter Number 5*:</label>
+    <input type="number" id="num5">
+    <br><br>
 
-    <div id="output"></div>
+    <button id="calculateButton">Calculate</button>
+
+    <p id="errorMessage" style="color:red;"></p>
+
+    <p id="maximumNo"></p>
+    <p id="minimumNo"></p>
+    <p id="sumOfAllNumbers"></p>
 
     <script src="script.js"></script>
+
 </body>
 </html>
 
 
-let name: string;
-let age: number;
-let hobbies: string[];
-let isStudent: boolean;
 
-function showInformation(): void {
+function calculate(): void {
 
-    name = (document.getElementById("nameInput") as HTMLInputElement).value;
+    const n1 = (document.getElementById("num1") as HTMLInputElement).value;
+    const n2 = (document.getElementById("num2") as HTMLInputElement).value;
+    const n3 = (document.getElementById("num3") as HTMLInputElement).value;
+    const n4 = (document.getElementById("num4") as HTMLInputElement).value;
+    const n5 = (document.getElementById("num5") as HTMLInputElement).value;
 
-    age = Number(
-        (document.getElementById("ageInput") as HTMLInputElement).value
-    );
+    const errorMessage = document.getElementById("errorMessage") as HTMLElement;
+    const maximumNo = document.getElementById("maximumNo") as HTMLElement;
+    const minimumNo = document.getElementById("minimumNo") as HTMLElement;
+    const sumOfAllNumbers = document.getElementById("sumOfAllNumbers") as HTMLElement;
 
-    const hobbiesInput = (
-        document.getElementById("arrayInput") as HTMLInputElement
-    ).value;
+    if (
+        n1 === "" ||
+        n2 === "" ||
+        n3 === "" ||
+        n4 === "" ||
+        n5 === ""
+    ) {
+        errorMessage.textContent = "Enter all the numbers";
 
-    hobbies = hobbiesInput
-        .split(",")
-        .map(hobby => hobby.trim());
+        maximumNo.textContent = "";
+        minimumNo.textContent = "";
+        sumOfAllNumbers.textContent = "";
 
-    const studentValue = (
-        document.getElementById("isStudentSelect") as HTMLSelectElement
-    ).value;
+        return;
+    }
 
-    isStudent = studentValue === "true";
+    errorMessage.textContent = "";
 
-    const output = document.getElementById("output") as HTMLDivElement;
+    const numbers: number[] = [
+        Number(n1),
+        Number(n2),
+        Number(n3),
+        Number(n4),
+        Number(n5)
+    ];
 
-    output.innerHTML =
-        `Name: ${name}, Type: ${typeof name}<br>` +
-        `Age: ${age}, Type: ${typeof age}<br>` +
-        `Hobbies: ${hobbies.join(",")}, Type: ${typeof hobbies}<br>` +
-        `Student: ${isStudent}, Type: ${typeof isStudent}`;
+    const maximum = Math.max(...numbers);
+    const minimum = Math.min(...numbers);
+
+    const sum = numbers.reduce(function (total, current) {
+        return total + current;
+    }, 0);
+
+    maximumNo.textContent = "Maximum number: " + maximum;
+    minimumNo.textContent = "Minimum number: " + minimum;
+    sumOfAllNumbers.textContent = "Sum of all numbers: " + sum;
 }
 
 document
-    .getElementById("showInfoButton")
-    ?.addEventListener("click", showInformation);
+    .getElementById("calculateButton")
+    ?.addEventListener("click", calculate);
