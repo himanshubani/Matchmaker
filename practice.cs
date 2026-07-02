@@ -3,98 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Array Operations</title>
+    <title>Product List and Cart Management</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1>Array Operations</h1>
+    <h1>Product List</h1>
 
-    <label>Enter Number 1*:</label>
-    <input type="number" id="num1">
-    <br><br>
+    <div id="productContainer"></div>
 
-    <label>Enter Number 2*:</label>
-    <input type="number" id="num2">
-    <br><br>
+    <h2>Cart</h2>
 
-    <label>Enter Number 3*:</label>
-    <input type="number" id="num3">
-    <br><br>
-
-    <label>Enter Number 4*:</label>
-    <input type="number" id="num4">
-    <br><br>
-
-    <label>Enter Number 5*:</label>
-    <input type="number" id="num5">
-    <br><br>
-
-    <button id="calculateButton">Calculate</button>
-
-    <p id="errorMessage" style="color:red;"></p>
-
-    <p id="maximumNo"></p>
-    <p id="minimumNo"></p>
-    <p id="sumOfAllNumbers"></p>
+    <ul id="cartList"></ul>
 
     <script src="script.js"></script>
 
 </body>
 </html>
 
-
-
-function calculate(): void {
-
-    const n1 = (document.getElementById("num1") as HTMLInputElement).value;
-    const n2 = (document.getElementById("num2") as HTMLInputElement).value;
-    const n3 = (document.getElementById("num3") as HTMLInputElement).value;
-    const n4 = (document.getElementById("num4") as HTMLInputElement).value;
-    const n5 = (document.getElementById("num5") as HTMLInputElement).value;
-
-    const errorMessage = document.getElementById("errorMessage") as HTMLElement;
-    const maximumNo = document.getElementById("maximumNo") as HTMLElement;
-    const minimumNo = document.getElementById("minimumNo") as HTMLElement;
-    const sumOfAllNumbers = document.getElementById("sumOfAllNumbers") as HTMLElement;
-
-    if (
-        n1 === "" ||
-        n2 === "" ||
-        n3 === "" ||
-        n4 === "" ||
-        n5 === ""
-    ) {
-        errorMessage.textContent = "Enter all the numbers";
-
-        maximumNo.textContent = "";
-        minimumNo.textContent = "";
-        sumOfAllNumbers.textContent = "";
-
-        return;
-    }
-
-    errorMessage.textContent = "";
-
-    const numbers: number[] = [
-        Number(n1),
-        Number(n2),
-        Number(n3),
-        Number(n4),
-        Number(n5)
-    ];
-
-    const maximum = Math.max(...numbers);
-    const minimum = Math.min(...numbers);
-
-    const sum = numbers.reduce(function (total, current) {
-        return total + current;
-    }, 0);
-
-    maximumNo.textContent = "Maximum number: " + maximum;
-    minimumNo.textContent = "Minimum number: " + minimum;
-    sumOfAllNumbers.textContent = "Sum of all numbers: " + sum;
+.product {
+    margin-bottom: 20px;
 }
 
-document
-    .getElementById("calculateButton")
-    ?.addEventListener("click", calculate);
+.cart-item {
+    margin-bottom: 10px;
+}
+
+button {
+    margin-top: 5px;
+}
+
+interface Product {
+    id: number;
+    name: string;
+    price: number;
+}
+
+interface CartItem {
+    product: Product;
+    quantity: number;
+}
+
+const products: Product[] = [
+    { id: 1, name: "Product 1", price: 10 },
+    { id: 2, name: "Product 2", price: 20 },
+    { id: 3, name: "Product 3", price: 30 }
+];
+
+let cart: CartItem[] = [];
+
+const productContainer = document.getElementById("productContainer") as HTMLDivElement;
+const cartList = document.getElementById("cartList") as HTMLUListElement;
+
+function displayProducts(): void {
+
+    productContainer.innerHTML = "";
+
+    products.forEach(function (product) {
+
+        const productDiv = document.createElement("div");
+        productDiv.className = "product";
+
+        productDiv.innerHTML =
+            `<p>${product.name}</p>
+             <p>$${product.price.toFixed(2)}</p>`;
+
+        const button = document.createElement("button");
+        button.textContent = "Add to Cart";
+
+        button.addEventListener("click", function () {
+            addToCart(product.id);
+        });
+
+        productDiv.appendChild(button);
+        productContainer.appendChild(productDiv);
+    });
+}
+
+function addToCart(productId: number): void {
+
+    const existingItem = cart.find(function (item) {
+        return item.product.id === productId;
+    });
+
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+
+        const product = products.find(function (p) {
+            return p.id === productId;
+        });
+
+        if (product) {
+            cart.push({
+                product: product,
+                quantity: 1
+            });
+        }
+    }
+
+    displayCart();
+}
+
+function removeFromCart(productId: number): void {
+
+    cart = cart.filter(function (item) {
+        return item.product.id !== productId;
+    });
+
+    displayCart();
+}
+
+function displayCart(): void {
+
+    cartList.innerHTML = "";
+
+    cart.forEach(function (item) {
+
+        const li = document.createElement("li");
+        li.className = "cart-item";
+
+        li.innerHTML =
+            `${item.product.name} - $${item.product.price.toFixed(2)} x ${item.quantity}`;
+
+        const removeButton = document.createElement("button");
+        removeButton.textContent = "Remove";
+
+        removeButton.addEventListener("click", function () {
+            removeFromCart(item.product.id);
+        });
+
+        li.appendChild(document.createElement("br"));
+        li.appendChild(removeButton);
+
+        cartList.appendChild(li);
+    });
+}
+
+displayProducts();
