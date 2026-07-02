@@ -1,93 +1,213 @@
-Week-5_Day-6_Session-2_Q-1
-===========================
+Week_5_Day_6_Session_3_Q_1
+==========================
+
+-----------Index.html-----------
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-   
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        #bookGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .book {
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .book h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .book p {
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .borrow-button {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .return-button {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <h1>Array Operations</h1>
+    <h1>Library Management System</h1>
+    
+    <div id="bookGrid">
+        <!-- Books will be dynamically added here -->
+    </div>
 
-    <label for="num1">Enter Number 1*:</label>
-    <input type="number" id="num1"><br>
-
-    <label for="num2">Enter Number 2*:</label>
-    <input type="number" id="num2"><br>
-
-    <label for="num3">Enter Number 3*:</label>
-    <input type="number" id="num3"><br>
-
-    <label for="num4">Enter Number 4*:</label>
-    <input type="number" id="num4"><br>
-
-    <label for="num5">Enter Number 5*:</label>
-    <input type="number" id="num5"><br>
-
-    <button id="calculateButton">Calculate</button>
-
-    <div id="errorMessage"></div>
-    <div id="sumOfEven"></div>
-    <div id="numbersGreaterThan5"></div>
-
-    <script src="script.js"></script> <!-- JavaScript compiled from TypeScript -->
-
+    <script src="script.js"></script>
 </body>
 </html>
-------Script.js-------
-function calculate(){
-    let x1: number = +(<HTMLInputElement>document.getElementById("num1")).value;
-    let x2: number = +(<HTMLInputElement>document.getElementById("num2")).value;
-    let x3: number = +(<HTMLInputElement>document.getElementById("num3")).value;
-    let x4: number = +(<HTMLInputElement>document.getElementById("num4")).value;
-    let x5: number = +(<HTMLInputElement>document.getElementById("num5")).value;
-    if(!x1||!x2||!x3||!x4||!x5){
-        document.getElementById("errorMessage").innerHTML="Enter all the numbers";
-        document.getElementById("maximumNo").innerHTML = "";
-        document.getElementById("minimumNo").innerHTML = "";
-        document.getElementById("sumOfEven").innerHTML = "";
-        return;
-    }
-    let nums:number[]=[];
-    nums.push(x1);
-    nums.push(x2);
-    nums.push(x3);
-    nums.push(x4);
-    nums.push(x5);
-    let maxNumber: number = Math.max(...nums);
-    let minNumber: number = Math.min(...nums);
-    let SumOfNumbers:number = getSumOfNumbers(nums);
-    let numbersGreaterThan5:string = getNumbersGreaterThan5(nums);
-    
-    function getSumOfNumbers(arr:number[]):number
-    {
-    let mynums:number=0;
-    for(let i:number=0;i<arr.length;i++){
-        if(arr[i] % 2 == 0)
-        {
-            mynums += arr[i];
-        }
-    }
-    return mynums;
-    }
-    function getNumbersGreaterThan5(arr:number[]):string
-    {
-    let numbersGreaterThan5:string = '';
-    for(let i:number=0;i<arr.length;i++){
-        if(arr[i] > 5)
-        {
-                numbersGreaterThan5 += arr[i] + ', ';
-        }
 
-    }
-    numbersGreaterThan5 = numbersGreaterThan5.slice(0,-2);
-
-    return numbersGreaterThan5;
-    }
-
-    document.getElementById("errorMessage").textContent="";
-    document.getElementById("maximumNo").textContent = `Maximum number: ${maxNumber}`;
-    document.getElementById("minimumNo").textContent = `Minimum number: ${minNumber}`;
-    document.getElementById("sumOfEven").textContent = `Sum of even numbers: ${SumOfNumbers}`;
-    document.getElementById("numbersGreaterThan5").textContent = `Numbers greater than 5: ${numbersGreaterThan5}`;
+----------Script.ts----------
+interface Book {
+    id: number;
+    title: string;
+    author: string;
+    isBorrowed: boolean;
 }
 
+class LibraryManager {
+    private books: Book[] = [
+        {
+            id: 0,
+            title: "1984",
+            author: "George Orwell",
+            isBorrowed: false
+        },
+        {
+            id: 1,
+            title: "To Kill a Mockingbird",
+            author: "Harper Lee",
+            isBorrowed: false
+        },
+        {
+            id: 2,
+            title: "The Great Gatsby",
+            author: "F. Scott Fitzgerald",
+            isBorrowed: false
+        }
+    ];
+
+    constructor() {
+        this.loadBooks();
+        this.renderBooks();
+    }
+
+    private loadBooks(): void {
+        const savedBooks = localStorage.getItem('libraryBooks');
+        if (savedBooks) {
+            this.books = JSON.parse(savedBooks);
+        }
+    }
+
+    private saveBooks(): void {
+        localStorage.setItem('libraryBooks', JSON.stringify(this.books));
+    }
+
+    private borrowBook(id: number): void {
+        const book = this.books.find(b => b.id === id);
+        if (book) {
+            book.isBorrowed = true;
+            this.saveBooks();
+            this.renderBooks();
+        }
+    }
+
+    private returnBook(id: number): void {
+        const book = this.books.find(b => b.id === id);
+        if (book) {
+            book.isBorrowed = false;
+            this.saveBooks();
+            this.renderBooks();
+        }
+    }
+
+    private createBookElement(book: Book): HTMLDivElement {
+        const bookElement = document.createElement('div');
+        bookElement.className = 'book';
+
+        const title = document.createElement('h3');
+        title.textContent = book.title;
+
+        const author = document.createElement('p');
+        author.textContent = `by ${book.author}`;
+
+        const status = document.createElement('p');
+        status.textContent = `Is borrowed: ${book.isBorrowed}`;
+
+        const buttonGroup = document.createElement('div');
+        buttonGroup.className = 'button-group';
+
+        const borrowButton = document.createElement('button');
+        borrowButton.className = 'borrow-button';
+        borrowButton.id = `borrowButton-${book.id}`;
+        borrowButton.textContent = 'Borrow';
+        borrowButton.disabled = book.isBorrowed;
+        borrowButton.addEventListener('click', () => this.borrowBook(book.id));
+
+        const returnButton = document.createElement('button');
+        returnButton.className = 'return-button';
+        returnButton.id = `returnButton-${book.id}`;
+        returnButton.textContent = 'Return';
+        returnButton.disabled = !book.isBorrowed;
+        returnButton.addEventListener('click', () => this.returnBook(book.id));
+
+        buttonGroup.appendChild(borrowButton);
+        buttonGroup.appendChild(returnButton);
+
+        bookElement.appendChild(title);
+        bookElement.appendChild(author);
+        bookElement.appendChild(status);
+        bookElement.appendChild(buttonGroup);
+
+        return bookElement;
+    }
+
+    private renderBooks(): void {
+        const bookGrid = document.getElementById('bookGrid');
+        if (!bookGrid) return;
+
+        bookGrid.innerHTML = '';
+        this.books.forEach(book => {
+            const bookElement = this.createBookElement(book);
+            bookGrid.appendChild(bookElement);
+        });
+    }
+}
+
+// Initialize the library manager when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new LibraryManager();
+});
+
+==========Commands==========
+nvm use 14
+npm install
+npx tsc
+npm start
