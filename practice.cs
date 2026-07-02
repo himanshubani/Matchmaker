@@ -3,7 +3,63 @@ program.cs
 using dotnetapp.Models;
 using Microsoft.AspNetCore.Identity;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);Week-5_Day-6_Session-1_Q-1
+==========================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Word Text Counter</title>
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        .output {
+            margin-top: 20px;
+        }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Word Text Counter</h1>
+<input type="text" id="wordInput" placeholder="Enter a sentence" style="width: 100%; padding: 10px;">
+<button onclick="countWords()">Count</button>
+<div class="output" id="output"></div>
+</div>
+ 
+    <script src="./script.js"></script>
+</body>
+</html>
+--------------Script.ts-------------
+
+function countWords() :void
+{
+    const sentence = (document.getElementById('wordInput') as HTMLInputElement).value.trim();
+    const outputDiv = document.getElementById('output') as HTMLDivElement;
+    if (sentence === "") {
+        outputDiv.innerHTML = "<p style='color: red;'>Please enter a sentence!</p>";
+        return;
+    }
+    const withoutSpaces = sentence.replace(/\s/g, '');
+    const charCount = withoutSpaces.length;
+    const firstChar = sentence.charAt(0);
+    const lastChar = sentence.charAt(sentence.length - 1);
+    outputDiv.innerHTML = `
+<p><strong>Original:</strong> ${sentence}</p>
+<p><strong>Word Length (Excluding Spaces):</strong> ${charCount}</p>
+<p><strong>First Character:</strong> ${firstChar}</p>
+<p><strong>Last Character:</strong> ${lastChar}</p>
+    `;
+}
+
 
 builder.Services.AddControllersWithViews();
 
