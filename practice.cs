@@ -1,231 +1,355 @@
-app/models/employee.ts
+Doctor.cs
+namespace dotnetapp.Models
+{
+    public class Doctor
+    {
+        public int DoctorId { get; set; }
 
-export class Employee {
-  FirstName: string = '';
-  LastName: string = '';
-  Gender: string = '';
-  Email: string = '';
-  TermsOfConditions: boolean = false;
+        public string Name { get; set; }
 
-  ContactDetails = {
-    Address: '',
-    Phone: ''
-  };
-}
+        public string Specialization { get; set; }
 
-app/employee-form/employee-form.component.ts
-import { Component } from '@angular/core';
-import { Employee } from '../models/employee';
+        public decimal ConsultationFee { get; set; }
 
-@Component({
-  selector: 'app-employee-form',
-  templateUrl: './employee-form.component.html',
-  styleUrls: ['./employee-form.component.css']
-})
-export class EmployeeFormComponent {
-
-  employee: Employee = {
-    FirstName: '',
-    LastName: '',
-    Gender: '',
-    Email: '',
-    TermsOfConditions: false,
-    ContactDetails: {
-      Address: '',
-      Phone: ''
+        public ICollection<Patient>? Patients { get; set; }
     }
-  };
-
-  onSubmit(): void {
-    console.log(this.employee);
-  }
 }
 
-app/employee-form/employee-form.component.html
-<form #employeeForm="ngForm" (ngSubmit)="onSubmit()">
+Patient.cs
+namespace dotnetapp.Models
+{
+    public class Patient
+    {
+        public int PatientId { get; set; }
 
-  <div>
-    <label for="firstName">First Name</label>
+        public string Name { get; set; }
 
-    <input
-      type="text"
-      id="firstName"
-      name="firstName"
-      [(ngModel)]="employee.FirstName"
-      #firstName="ngModel"
-      required
-      minlength="2"
-      maxlength="50">
+        public int Age { get; set; }
 
-    <div *ngIf="firstName.invalid && firstName.touched">
-      <small *ngIf="firstName.errors?.['required']">
-        First Name is required
-      </small>
+        public string Condition { get; set; }
 
-      <small *ngIf="firstName.errors?.['minlength']">
-        Minimum length is 2
-      </small>
+        public DateTime AppointmentDate { get; set; }
 
-      <small *ngIf="firstName.errors?.['maxlength']">
-        Maximum length is 50
-      </small>
-    </div>
-  </div>
+        public int? DoctorId { get; set; }
 
-  <br>
+        public Doctor? Doctor { get; set; }
+    }
+}
 
-  <div>
-    <label for="lastName">Last Name</label>
+User.cs
+namespace dotnetapp.Models
+{
+    public class User
+    {
+        public long Id { get; set; }
 
-    <input
-      type="text"
-      id="lastName"
-      name="lastName"
-      [(ngModel)]="employee.LastName"
-      #lastName="ngModel"
-      required
-      minlength="2"
-      maxlength="50">
+        public string Username { get; set; }
 
-    <div *ngIf="lastName.invalid && lastName.touched">
-      <small *ngIf="lastName.errors?.['required']">
-        Last Name is required
-      </small>
+        public string Password { get; set; }
 
-      <small *ngIf="lastName.errors?.['minlength']">
-        Minimum length is 2
-      </small>
+        public string Role { get; set; }
+    }
+}
 
-      <small *ngIf="lastName.errors?.['maxlength']">
-        Maximum length is 50
-      </small>
-    </div>
-  </div>
+LoginModel.cs
+namespace dotnetapp.Models
+{
+    public class LoginModel
+    {
+        public string Username { get; set; }
 
-  <br>
+        public string Password { get; set; }
+    }
+}
 
-  <div>
-    <label>Gender</label>
+ApplicationDbContext.cs
+using Microsoft.EntityFrameworkCore;
 
-    <input
-      type="radio"
-      name="gender"
-      value="Male"
-      [(ngModel)]="employee.Gender">
-    Male
+namespace dotnetapp.Models
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
 
-    <input
-      type="radio"
-      name="gender"
-      value="Female"
-      [(ngModel)]="employee.Gender">
-    Female
-  </div>
+        public DbSet<Doctor> Doctors { get; set; }
 
-  <br>
+        public DbSet<Patient> Patients { get; set; }
 
-  <div>
-    <label for="email">Email</label>
+        public DbSet<User> Users { get; set; }
+    }
+}
 
-    <input
-      type="email"
-      id="email"
-      name="email"
-      [(ngModel)]="employee.Email"
-      #email="ngModel"
-      required
-      email>
+DoctorController.cs
+using dotnetapp.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-    <div *ngIf="email.invalid && email.touched">
-      <small *ngIf="email.errors?.['required']">
-        Email is required
-      </small>
+namespace dotnetapp.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class DoctorController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
 
-      <small *ngIf="email.errors?.['email']">
-        Enter a valid Email
-      </small>
-    </div>
-  </div>
+        public DoctorController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-  <br>
+        [HttpGet("GetDoctors")]
+        public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
+        {
+            return Ok(await _context.Doctors
+                .Include(d => d.Patients)
+                .ToListAsync());
+        }
 
-  <fieldset>
-    <legend>ContactDetails</legend>
+        [HttpPost("PostDoctor")]
+        public async Task<ActionResult<Doctor>> PostDoctor(Doctor doctor)
+        {
+            _context.Doctors.Add(doctor);
 
-    <div>
-      <label for="address">Address</label>
+            await _context.SaveChangesAsync();
 
-      <input
-        type="text"
-        id="address"
-        name="address"
-        [(ngModel)]="employee.ContactDetails.Address">
-    </div>
+            return CreatedAtAction(
+                nameof(GetDoctors),
+                new { id = doctor.DoctorId },
+                doctor);
+        }
 
-    <br>
+        [HttpPut("PutDoctor/{id}")]
+        public async Task<IActionResult> PutDoctor(int id, Doctor doctor)
+        {
+            if (id != doctor.DoctorId)
+                return BadRequest();
 
-    <div>
-      <label for="phone">Phone</label>
+            _context.Entry(doctor).State =
+                EntityState.Modified;
 
-      <input
-        type="text"
-        id="phone"
-        name="phone"
-        [(ngModel)]="employee.ContactDetails.Phone">
-    </div>
-  </fieldset>
+            await _context.SaveChangesAsync();
 
-  <br>
+            return NoContent();
+        }
 
-  <div>
-    <input
-      type="checkbox"
-      id="termsConditions"
-      name="termsConditions"
-      [(ngModel)]="employee.TermsOfConditions"
-      #termsConditions="ngModel"
-      required>
+        [HttpDelete("DeleteDoctor/{id}")]
+        public async Task<IActionResult> DeleteDoctor(int id)
+        {
+            var doctor =
+                await _context.Doctors
+                .Include(x => x.Patients)
+                .FirstOrDefaultAsync(x => x.DoctorId == id);
 
-    <label for="termsConditions">
-      I Agree to Terms and Conditions
-    </label>
+            if (doctor == null)
+                return NotFound();
 
-    <div *ngIf="termsConditions.invalid && termsConditions.touched">
-      <small>
-        Terms and Conditions must be accepted
-      </small>
-    </div>
-  </div>
+            if (doctor.Patients != null &&
+                doctor.Patients.Any())
+                return Conflict(
+                    "Doctor has associated patients");
 
-  <br>
+            _context.Doctors.Remove(doctor);
 
-  <button type="submit" [disabled]="employeeForm.invalid">
-    Submit
-  </button>
+            await _context.SaveChangesAsync();
 
-</form>
+            return NoContent();
+        }
+    }
+}
 
-app.module.ts
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
+PatientController.cs
+using dotnetapp.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-import { AppComponent } from './app.component';
-import { EmployeeFormComponent } from './employee-form/employee-form.component';
+namespace dotnetapp.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class PatientController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    EmployeeFormComponent
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
+        public PatientController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-app.component.html
-<app-employee-form></app-employee-form>
+        [HttpGet("GetPatients")]
+        public async Task<ActionResult<IEnumerable<Patient>>> GetPatients()
+        {
+            return Ok(await _context.Patients
+                .Include(p => p.Doctor)
+                .ToListAsync());
+        }
+
+        [HttpPost("PostPatient")]
+        public async Task<ActionResult<Patient>> PostPatient(Patient patient)
+        {
+            _context.Patients.Add(patient);
+
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(
+                nameof(GetPatients),
+                new { id = patient.PatientId },
+                patient);
+        }
+
+        [HttpPut("PutPatient/{id}")]
+        public async Task<IActionResult> PutPatient(
+            int id,
+            Patient patient)
+        {
+            if (id != patient.PatientId)
+                return BadRequest();
+
+            _context.Entry(patient).State =
+                EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        [HttpDelete("DeletePatient/{id}")]
+        public async Task<IActionResult> DeletePatient(int id)
+        {
+            var patient =
+                await _context.Patients.FindAsync(id);
+
+            if (patient == null)
+                return NotFound();
+
+            _context.Patients.Remove(patient);
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+    }
+}
+
+UserController.cs
+using dotnetapp.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace dotnetapp.Controllers
+{
+    [ApiController]
+    [Route("api/users")]
+    public class UserController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+
+        public UserController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        private readonly string[] validRoles =
+        {
+            "Admin",
+            "Organizer"
+        };
+
+        [HttpPost("register")]
+        public async Task<ActionResult<User>> Register(
+            User user)
+        {
+            if (!IsValidRole(user.Role))
+                return BadRequest("Invalid Role");
+
+            bool exists =
+                await _context.Users.AnyAsync(
+                    x => x.Username == user.Username);
+
+            if (exists)
+                return Conflict();
+
+            _context.Users.Add(user);
+
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(
+                nameof(Register),
+                new { id = user.Id },
+                user);
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<object>> Login(
+            LoginModel login)
+        {
+            var user =
+                await _context.Users.FirstOrDefaultAsync(
+                    x => x.Username == login.Username &&
+                         x.Password == login.Password);
+
+            if (user == null)
+                return BadRequest(
+                    new { Message = "Login Failed" });
+
+            return Ok(new
+            {
+                Message = "Login Successful",
+                User = user
+            });
+        }
+
+        private bool IsValidRole(string role)
+        {
+            return validRoles.Contains(role);
+        }
+    }
+}
+
+Program.cs
+using dotnetapp.Models;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+
+builder.Services.AddDbContext<ApplicationDbContext>(
+options =>
+options.UseSqlServer(
+builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen()
+;
+
+var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapControllers();
+
+app.Run();
+
+appsettings.json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+
+  "AllowedHosts": "*"
+}
+
+
