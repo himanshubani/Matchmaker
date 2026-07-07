@@ -6,7 +6,7 @@ import { Component } from '@angular/core';
   styleUrls: ['./text-transformation.component.css']
 })
 export class TextTransformationComponent {
-  // Properties to hold transformed text and calculated statistics
+
   transformedText: string = '';
   textLength: number = 0;
   lowercaseCount: number = 0;
@@ -14,34 +14,33 @@ export class TextTransformationComponent {
   numberCount: number = 0;
   specialCharCount: number = 0;
 
-  constructor() {}
-
-  // Method to process the user input
   transformText(inputText: string): void {
-    // 1. Convert to uppercase and store it
+
+    // Convert text to uppercase
     this.transformedText = inputText.toUpperCase();
 
-    // 2. Calculate and store total length (including spaces)
+    // Length including spaces
     this.textLength = inputText.length;
 
-    // 3. Reset all counts before iterating
+    // Reset counts
     this.lowercaseCount = 0;
     this.uppercaseCount = 0;
     this.numberCount = 0;
     this.specialCharCount = 0;
 
-    // 4. Loop through each character to update statistics
-    for (let i = 0; i < inputText.length; i++) {
-      const char = inputText[i];
+    // Count character types
+    for (let ch of inputText) {
 
-      if (char >= 'a' && char <= 'z') {
+      if (ch >= 'a' && ch <= 'z') {
         this.lowercaseCount++;
-      } else if (char >= 'A' && char <= 'Z') {
+      }
+      else if (ch >= 'A' && ch <= 'Z') {
         this.uppercaseCount++;
-      } else if (char >= '0' && char <= '9') {
+      }
+      else if (ch >= '0' && ch <= '9') {
         this.numberCount++;
-      } else {
-        // Any character that is not a letter or number is treated as special (including spaces)
+      }
+      else {
         this.specialCharCount++;
       }
     }
@@ -49,14 +48,14 @@ export class TextTransformationComponent {
 }
 
 
-<!-- Input field to accept user data on every keystroke -->
-<input 
-  type="text" 
-  placeholder="Type your text here..." 
-  (input)="transformText($any($event.target).value)" 
+<h2>Text Transformation</h2>
+
+<input
+  type="text"
+  (input)="transformText($any($event.target).value)"
+  placeholder="Enter text here"
 />
 
-<!-- Statistical Output Blocks -->
 <p>Transformed Text: {{ transformedText }}</p>
 <p>Length of Text: {{ textLength }}</p>
 <p>Lowercase Count: {{ lowercaseCount }}</p>
