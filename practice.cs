@@ -1,75 +1,65 @@
-import { Pipe, PipeTransform } from '@angular/core';
- 
-@Pipe({
- 
-  name: 'searchFilter'
- 
-})
- 
-export class SearchFilterPipe implements PipeTransform {
- 
-  transform(items: any[], searchTerm: string): any[] {
- 
-    if (!items || !searchTerm) {
- 
-    return items;
- 
-    }
- 
-    searchTerm = searchTerm.toLowerCase();
- 
-    return items.filter(item =>
- 
-    JSON.stringify(item).toLowerCase().includes(searchTerm)
- 
-    );
- 
-  }
- 
-}
-===============
-.ts
 import { Component } from '@angular/core';
- 
+
 @Component({
- 
-  selector: 'app-search',
- 
-  templateUrl: './search.component.html',
- 
-  styleUrls: ['./search.component.css']
- 
+  selector: 'app-text-transformation',
+  templateUrl: './text-transformation.component.html',
+  styleUrls: ['./text-transformation.component.css']
 })
- 
-export class SearchComponent {
- 
-  searchText: string = '';
- 
-  items = [
- 
-    { id: 1, name: 'Apple', category: 'Fruit' },
- 
-    { id: 2, name: 'Banana', category: 'Fruit' },
- 
-    { id: 3, name: 'Carrot', category: 'Vegetable' }
- 
-  ];
- 
+export class TextTransformationComponent {
+  // Properties to hold transformed text and calculated statistics
+  transformedText: string = '';
+  textLength: number = 0;
+  lowercaseCount: number = 0;
+  uppercaseCount: number = 0;
+  numberCount: number = 0;
+  specialCharCount: number = 0;
+
+  constructor() {}
+
+  // Method to process the user input
+  transformText(inputText: string): void {
+    // 1. Convert to uppercase and store it
+    this.transformedText = inputText.toUpperCase();
+
+    // 2. Calculate and store total length (including spaces)
+    this.textLength = inputText.length;
+
+    // 3. Reset all counts before iterating
+    this.lowercaseCount = 0;
+    this.uppercaseCount = 0;
+    this.numberCount = 0;
+    this.specialCharCount = 0;
+
+    // 4. Loop through each character to update statistics
+    for (let i = 0; i < inputText.length; i++) {
+      const char = inputText[i];
+
+      if (char >= 'a' && char <= 'z') {
+        this.lowercaseCount++;
+      } else if (char >= 'A' && char <= 'Z') {
+        this.uppercaseCount++;
+      } else if (char >= '0' && char <= '9') {
+        this.numberCount++;
+      } else {
+        // Any character that is not a letter or number is treated as special (including spaces)
+        this.specialCharCount++;
+      }
+    }
+  }
 }
-=========
-.html
-<input type="text" [(ngModel)]="searchText" placeholder="Search..." />
- 
-<div>
- 
-<ul>
- 
-    <li *ngFor="let item of items | searchFilter: searchText">
- 
-    {{ item.name }} - {{ item.category }}
- 
-    </li>
- 
-</ul>
- 
-</div>
+
+
+<!-- Input field to accept user data on every keystroke -->
+<input 
+  type="text" 
+  placeholder="Type your text here..." 
+  (input)="transformText($any($event.target).value)" 
+/>
+
+<!-- Statistical Output Blocks -->
+<p>Transformed Text: {{ transformedText }}</p>
+<p>Length of Text: {{ textLength }}</p>
+<p>Lowercase Count: {{ lowercaseCount }}</p>
+<p>Uppercase Count: {{ uppercaseCount }}</p>
+<p>Number Count: {{ numberCount }}</p>
+<p>Special Character Count: {{ specialCharCount }}</p>
