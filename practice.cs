@@ -1,153 +1,231 @@
-Models/Order.cs
-using System.ComponentModel.DataAnnotations;
+app/models/employee.ts
 
-namespace OrderService.Models
-{
-    public class Order
-    {
-        [Key]
-        public int OrderId { get; set; }
+export class Employee {
+  FirstName: string = '';
+  LastName: string = '';
+  Gender: string = '';
+  Email: string = '';
+  TermsOfConditions: boolean = false;
 
-        public string CustomerName { get; set; }
-
-        public DateTime OrderDate { get; set; }
-
-        public decimal TotalAmount { get; set; }
-    }
+  ContactDetails = {
+    Address: '',
+    Phone: ''
+  };
 }
 
-Models/ApplicationDbContext.cs
-using Microsoft.EntityFrameworkCore;
+app/employee-form/employee-form.component.ts
+import { Component } from '@angular/core';
+import { Employee } from '../models/employee';
 
-namespace OrderService.Models
-{
-    public class ApplicationDbContext : DbContext
-    {
-        public ApplicationDbContext(
-            DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        {
-        }
+@Component({
+  selector: 'app-employee-form',
+  templateUrl: './employee-form.component.html',
+  styleUrls: ['./employee-form.component.css']
+})
+export class EmployeeFormComponent {
 
-        public DbSet<Order> Orders { get; set; }
+  employee: Employee = {
+    FirstName: '',
+    LastName: '',
+    Gender: '',
+    Email: '',
+    TermsOfConditions: false,
+    ContactDetails: {
+      Address: '',
+      Phone: ''
     }
-}
+  };
 
-Controllers/OrderController.cs
-
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OrderService.Models;
-
-namespace OrderService.Controllers
-{
-    [ApiController]
-    [Route("api/order")]
-    public class OrderController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-
-        public OrderController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
-        {
-            var orders = await _context.Orders.ToListAsync();
-
-            return Ok(orders);
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<Order>> CreateOrder(Order order)
-        {
-            _context.Orders.Add(order);
-
-            await _context.SaveChangesAsync();
-
-            var response = new
-            {
-                message = "Order created successfully",
-                data = order
-            };
-
-            return StatusCode(201, response);
-        }
-    }
-}
-
-Program.cs
-
-using Microsoft.EntityFrameworkCore;
-using OrderService.Models;
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllers();
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"));
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.MapControllers();
-
-app.Run("http://localhost:8080");
-
-appsettings.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"
+  onSubmit(): void {
+    console.log(this.employee);
   }
 }
 
-ocelot.json
-{
-  "Routes": [
-    {
-      "UpstreamPathTemplate": "/order-api/order",
-      "UpstreamHttpMethod": [ "GET", "POST" ],
+app/employee-form/employee-form.component.html
+<form #employeeForm="ngForm" (ngSubmit)="onSubmit()">
 
-      "DownstreamPathTemplate": "/api/order",
-      "DownstreamScheme": "http",
+  <div>
+    <label for="firstName">First Name</label>
 
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 8080
-        }
-      ]
-    }
+    <input
+      type="text"
+      id="firstName"
+      name="firstName"
+      [(ngModel)]="employee.FirstName"
+      #firstName="ngModel"
+      required
+      minlength="2"
+      maxlength="50">
+
+    <div *ngIf="firstName.invalid && firstName.touched">
+      <small *ngIf="firstName.errors?.['required']">
+        First Name is required
+      </small>
+
+      <small *ngIf="firstName.errors?.['minlength']">
+        Minimum length is 2
+      </small>
+
+      <small *ngIf="firstName.errors?.['maxlength']">
+        Maximum length is 50
+      </small>
+    </div>
+  </div>
+
+  <br>
+
+  <div>
+    <label for="lastName">Last Name</label>
+
+    <input
+      type="text"
+      id="lastName"
+      name="lastName"
+      [(ngModel)]="employee.LastName"
+      #lastName="ngModel"
+      required
+      minlength="2"
+      maxlength="50">
+
+    <div *ngIf="lastName.invalid && lastName.touched">
+      <small *ngIf="lastName.errors?.['required']">
+        Last Name is required
+      </small>
+
+      <small *ngIf="lastName.errors?.['minlength']">
+        Minimum length is 2
+      </small>
+
+      <small *ngIf="lastName.errors?.['maxlength']">
+        Maximum length is 50
+      </small>
+    </div>
+  </div>
+
+  <br>
+
+  <div>
+    <label>Gender</label>
+
+    <input
+      type="radio"
+      name="gender"
+      value="Male"
+      [(ngModel)]="employee.Gender">
+    Male
+
+    <input
+      type="radio"
+      name="gender"
+      value="Female"
+      [(ngModel)]="employee.Gender">
+    Female
+  </div>
+
+  <br>
+
+  <div>
+    <label for="email">Email</label>
+
+    <input
+      type="email"
+      id="email"
+      name="email"
+      [(ngModel)]="employee.Email"
+      #email="ngModel"
+      required
+      email>
+
+    <div *ngIf="email.invalid && email.touched">
+      <small *ngIf="email.errors?.['required']">
+        Email is required
+      </small>
+
+      <small *ngIf="email.errors?.['email']">
+        Enter a valid Email
+      </small>
+    </div>
+  </div>
+
+  <br>
+
+  <fieldset>
+    <legend>ContactDetails</legend>
+
+    <div>
+      <label for="address">Address</label>
+
+      <input
+        type="text"
+        id="address"
+        name="address"
+        [(ngModel)]="employee.ContactDetails.Address">
+    </div>
+
+    <br>
+
+    <div>
+      <label for="phone">Phone</label>
+
+      <input
+        type="text"
+        id="phone"
+        name="phone"
+        [(ngModel)]="employee.ContactDetails.Phone">
+    </div>
+  </fieldset>
+
+  <br>
+
+  <div>
+    <input
+      type="checkbox"
+      id="termsConditions"
+      name="termsConditions"
+      [(ngModel)]="employee.TermsOfConditions"
+      #termsConditions="ngModel"
+      required>
+
+    <label for="termsConditions">
+      I Agree to Terms and Conditions
+    </label>
+
+    <div *ngIf="termsConditions.invalid && termsConditions.touched">
+      <small>
+        Terms and Conditions must be accepted
+      </small>
+    </div>
+  </div>
+
+  <br>
+
+  <button type="submit" [disabled]="employeeForm.invalid">
+    Submit
+  </button>
+
+</form>
+
+app.module.ts
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
+
+import { AppComponent } from './app.component';
+import { EmployeeFormComponent } from './employee-form/employee-form.component';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    EmployeeFormComponent
   ],
+  imports: [
+    BrowserModule,
+    FormsModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
 
-  "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:8081"
-  }
-}
-
-Program.cs
-using Ocelot.DependencyInjection;
-using Ocelot.Middleware;
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Configuration
-    .AddJsonFile("ocelot.json", false, true);
-
-builder.Services.AddOcelot();
-
-var app = builder.Build();
-
-await app.UseOcelot();
-
-app.Run("http://localhost:8081");
-
+app.component.html
+<app-employee-form></app-employee-form>
