@@ -1,94 +1,97 @@
-<h1>Task Tracker</h1>
-<app-task-input (taskAdded)="addTask($event)">
-</app-task-input>
-<app-task-list [tasks]="tasks" (taskDeleted)="deleteTask($event)">
-</app-task-list>
-<router-outlet></router-outlet>
- 
-app.html
- 
-<h1>Task Input</h1>
- 
-<input type="text" placeholder="Enter Task Description" [(ngModel)]="taskInput">
-<button (click)="addTask()">Add Task</button>
- 
-task-input.html
- 
-import { outputAst } from '@angular/compiler';
-import { Component, EventEmitter, Output } from '@angular/core';
- 
-@Component({
-  selector: 'app-task-input',
-  templateUrl: './task-input.component.html',
-  styleUrls: ['./task-input.component.css']
-})
-export class TaskInputComponent {
-  taskInput: string = '';
-  @Output()
-  taskAdded = new EventEmitter<string>();
-  addTask(): void{
-    if(this.taskInput.trim() != ''){
-      this.taskAdded.emit(this.taskInput);
-      this.taskInput = '';
-    }
-  }
- 
-}
- 
-uska css
- 
-js
- 
-<h1>Task List</h1>
-<ul>
-    <li *ngFor="let task of tasks; let i = index">
-    {{task}}
- 
-    <button (click)="deleteTask(i)">
-        Delete
-    </button>
-</li>
-</ul>
- 
-task-list.html
- 
-import { Component, EventEmitter, Input, Output } from '@angular/core';
- 
-@Component({
-  selector: 'app-task-list',
-  templateUrl: './task-list.component.html',
-  styleUrls: ['./task-list.component.css']
-})
-export class TaskListComponent {
-  @Input()
-  tasks: string[] = [];
-  @Output()
-  taskDeleted = new EventEmitter<number>();
- 
-  deleteTask(index: number): void{
-    this.taskDeleted.emit(index);
-  }
-}
- 
- 
-uska .ts
- 
+shopping-list.component.ts
 import { Component } from '@angular/core';
  
-@Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
-})
-export class AppComponent {
-  title = 'angularapp';
-  tasks: string[] = [];
-  addTask(task: string): void{
-    this.tasks.push(task);
-  }
-  deleteTask(index: number): void{
-    this.tasks.splice(index, 1);
-  }
+interface Item {
+ 
+  name: string;
+ 
+  purchased: boolean;
+ 
 }
  
-appcomponent.ts
+@Component({
+ 
+  selector: 'app-shopping-list',
+ 
+  templateUrl: './shopping-list.component.html',
+ 
+  styleUrls: ['./shopping-list.component.css']
+ 
+})
+ 
+export class ShoppingListComponent {
+ 
+  items: Item[] = [];
+ 
+  newItemName: string = '';
+ 
+  addItem(): void {
+ 
+    if (this.newItemName.trim() !== '') {
+ 
+    this.items.push({
+ 
+    name: this.newItemName,
+ 
+    purchased: false
+ 
+    });
+ 
+    this.newItemName = '';
+ 
+    }
+ 
+  }
+ 
+  purchaseItem(item: Item): void {
+ 
+    item.purchased = !item.purchased;
+ 
+  }
+ 
+  deleteItem(index: number): void {
+ 
+    this.items.splice(index, 1);
+ 
+  }
+ 
+}
+===========
+shopping-list.component.html
+<h2>Shopping List</h2>
+ 
+<input
+ 
+  type="text"
+ 
+  [(ngModel)]="newItemName"
+ 
+  placeholder="Enter item name">
+ 
+<button (click)="addItem()">Add Item`</button>`
+ 
+<ul>
+ 
+<li *ngFor="let item of items; let i = index">
+ 
+    <span>{{ item.name }}</span>
+ 
+    <button (click)="purchaseItem(item)">
+ 
+    Purchased
+ 
+    </button>
+ 
+    <button (click)="deleteItem(i)">
+ 
+    Delete
+ 
+    </button>
+ 
+</li>
+ 
+</ul>
+ 
+==========
+app.component.html
+<app-shopping-list></app-shopping-list>
