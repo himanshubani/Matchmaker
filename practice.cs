@@ -1,178 +1,141 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using dotnetapp.Models;
+using Microsoft.Extensions.Logging;
+using MusicianBookingSystem.Exceptions;
+using MusicianBookingSystem.Models;
  
-using dotnetapp.Services;
- 
-using Microsoft.AspNetCore.Mvc;
-namespace dotnetapp.Controllers
+namespace MusicianBookingSystem.Controllers
 {
-   
- 
-[ApiController]
- 
-[Route("api")]
- 
-public class AuthenticationController : ControllerBase
- 
-{
-    private readonly IAuthService _authService;
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<AuthenticationController> _logger;
-    public AuthenticationController(
-        IAuthService authService,
-        ApplicationDbContext context,
- 
-        ILogger<AuthenticationController> logger)
+    // [Route("[controller]")]
+    public class BookingController : Controller
     {
-        _authService = authService;
-        _context = context;
-        _logger = logger;
-    }
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginModel model)
-    {
-        try
-        {
+        private readonly ApplicationDbContext db;
  
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-            var token = await _authService.Login(model);
-            if (string.IsNullOrEmpty(token))
-            {
-                return BadRequest(new { message = "Invalid email or password" });
-            }
-            return Ok(new { token = token });
+        public BookingController(ApplicationDbContext db1)
+        {
+            db = db1;
         }
  
-        catch (Exception ex)
- 
+        public IActionResult Index()
         {
- 
-            _logger.LogError(ex, "Error occurred during login");
- 
-            return BadRequest(new { message = "An error occurred during login" });
- 
+            var slots = db.Slots.ToList();
+            return View(slots);
         }
  
-    }
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] User user)
-    {
-        try
+        public IActionResult Book(int id)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-            if (user.UserRole != "Admin" && user.UserRole != "Customer")
-            {
-                return BadRequest(new { message = "Invalid user role. Allowed roles are Admin or Customer" });
-            }
-            var result = await _authService.Registration(user, user.UserRole);
- 
-            if (result != "User registered successfully")
-            {
-                return BadRequest(new { message = result });
-            }
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            return Ok(new { message = result });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred during registration");
- 
-            return BadRequest(new { message = "An error occurred during registration" });
- 
+            var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
+            if(slot == null)
+                return View(new Slot());
+            return View(slot);
         }
  
-    }
- 
-}
-}
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using dotnetapp.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-namespace dotnetapp.Controllers
-{
- 
-    [ApiController]
- 
-    [Route("api/plants")]
- 
-    [Authorize]
-    public class PlantController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-   public PlantController(ApplicationDbContext context)
-        {
-            _context = context;
- 
-        }
-        [HttpGet]
-        public async Task<IActionResult> Get()
- 
-        {
-            var plants = await _context.Plants.ToListAsync();
- 
-            return Ok(plants);
-        }
- 
- 
-        [HttpGet("{id}")]
- 
-        public async Task<IActionResult> GetById(int id)
- 
-        {
- 
-            var plant = await _context.Plants.FindAsync(id);
- 
- 
-            if (plant == null)
- 
-            {
- 
-                return NotFound();
- 
-            }
- 
-   return Ok(plant);
- 
-        }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
- 
-        public async Task<IActionResult> Post([FromBody] Plant plant)
+        public IActionResult Book(int id, int Userid)
         {
+            try
+            {
+                var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
+                if (slot == null)
+                    return NotFound();
+                if (slot.Bookings.Count >= 5)
+                    throw new SlotBookingException("Slot is full.");
+                if (slot.Bookings.Any(b => b.UserID == Userid))
+                    throw new SlotBookingException("You have already booked this slot.");
+                Booking booking = new Booking
+                {
+                    SlotID = id,
+                    UserID = Userid,
+                    Slot = slot
  
-            if (plant == null)
-{
- 
-                return BadRequest(new { message = "Plant data is required" });
- 
+                };
+                slot.Bookings.Add(booking);
+                db.Bookings.Add(booking);
+                db.SaveChanges();
+                return View("Book",slot);
             }
-            _context.Plants.Add(plant);
- 
-            await _context.SaveChangesAsync();
- 
- 
-            return CreatedAtAction(nameof(GetById), new { id = plant.PlantId }, plant);
- 
+            catch(SlotBookingException ex)
+            {
+                ViewBag.Error = ex.Message;
+                return View("Book", db.Slots.FirstOrDefault(s => s.SlotID == id));
+            }
+        }
+        public IActionResult Summary(int Userid)
+        {
+            var b=db.Bookings.Where(bb=>bb.UserID == Userid).ToList();
+            return View(b);
         }
  
+ 
+    }
+}
+ 
+ 
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using MusicianBookingSystem.Models;
+ 
+namespace MusicianBookingSystem.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly ILogger<HomeController> _logger;
+ 
+        public HomeController(ILogger<HomeController> logger)
+        {
+            _logger = logger;
+        }
+ 
+        public IActionResult Index()
+        {
+            return View();
+        }
+ 
+        public IActionResult Privacy()
+        {
+            return View();
+        }
+ 
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+    }
+}
+ 
+ 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using MusicianBookingSystem.Models;
+ 
+namespace MusicianBookingSystem.Controllers
+{
+    // [Route("[controller]")]
+    public class SlotController : Controller
+    {
+        private readonly ApplicationDbContext db;
+ 
+        public SlotController(ApplicationDbContext db1)
+        {
+            db=db1;
+        }
+ 
+        public IActionResult Index()
+        {
+            var slots = db.Slots.ToList();
+            return View(slots);
+        }
     }
 }
  
@@ -180,38 +143,31 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+ 
+namespace MusicianBookingSystem.Exceptions
+{
+    public class SlotBookingException : Exception
+    {
+        public SlotBookingException (string message) : base(message) {}
+    }
+}
+ 
+ 
+ 
+using System.Reflection.Emit;
 using Microsoft.EntityFrameworkCore;
-namespace dotnetapp.Models
-{
-public class ApplicationDbContext : DbContext
-{
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options): base(options)
- 
-    {
-    }
-    public DbSet<User> Users { get; set; }
- 
-    public DbSet<Plant> Plants { get; set; }
- 
-}
-}
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Identity;
+using MusicianBookingSystem.Models;
+using System.Collections.Generic;
  
-namespace dotnetapp.Models
+namespace MusicianBookingSystem.Models
 {
-    public class ApplicationUsers : IdentityUser
+    public class ApplicationDbContext : DbContext
     {
-        [MaxLength(30)]
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext>options):base(options){}
  
-        public string? Name {get; set;}
- 
- 
+        public DbSet<Slot>Slots{get;set;}
+         public DbSet<Booking> Bookings {get; set;}
        
     }
 }
@@ -221,20 +177,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
-namespace dotnetapp.Models
+ 
+namespace MusicianBookingSystem.Models
 {
-public class LoginModel
-{
-    [Required]
+    public class Booking{
  
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-    [Required]
-    public string Password { get; set; } = string.Empty;
+        public int BookingID {get; set;}
  
+        public int SlotID {get; set;}
+ 
+        public int UserID {get; set;}
+ 
+        public Slot Slot {get; set;}
+    }
 }
-}
- 
  
 using System;
 using System.Collections.Generic;
@@ -242,306 +198,51 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
  
-namespace dotnetapp.Models
+namespace MusicianBookingSystem.Models
 {
-public class Plant
-{
-    [Key]
-    public int PlantId { get; set; }
-    [Required]
- 
-    public string Name { get; set; } = string.Empty;
-    [Required]
-     public string ScientificName { get; set; } = string.Empty;
- 
-    [Required]
- 
-    public string Description { get; set; } = string.Empty;
-    [Required]
- 
-    public double Price { get; set; }
- 
-}
-}
- 
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
- 
-namespace dotnetapp.Models
-{
-    public class RegistrationModel
+    public class Slot
     {
-        [Required]
-        public string Username {get; set;}
- 
-        [EmailAddress]
-        [Required]
- 
-        public string Email {get; set;}
- 
-        [Required]
-        public string MobileNumber {get; set;}
- 
-        [Required]
-        public string Password {get; set;}
- 
-        [Required]
-        public string UserRole {get; set;}
+        [Key]
+        public int SlotID{get;set;}
+        public DateTime Time{get;set;}
+        public int Duration{get;set;}
+        public int Capacity{get;set;}
+        public List<Booking> Bookings{get;set;}=new List<Booking>();
     }
 }
  
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-        using System.ComponentModel.DataAnnotations;
-namespace dotnetapp.Models
-{
-public class User
- 
-{
-    [Key]
-    public long UserId { get; set; }
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-    [Required]
-    public string Password { get; set; } = string.Empty;
-    [Required]
- 
-    public string Username { get; set; } = string.Empty;
- 
-    [Required]
-    public string MobileNumber { get; set; } = string.Empty;
- 
-    [Required]
-    public string UserRole { get; set; } = string.Empty;
- 
-}
-}
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
- 
-namespace dotnetapp.Models
-{
-    public static class UserRoles
-    {
-        public const string Admin = "Admin";
- 
-        public const string User = "Customer";
-       
-    }
-}
- 
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-    using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using dotnetapp.Models;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-namespace dotnetapp.Services
- 
-{
-public class AuthService : IAuthService
-{
-    private readonly ApplicationDbContext _context;
-       private readonly IConfiguration _configuration;
-    private readonly PasswordHasher<User> _passwordHasher;
-    public AuthService(ApplicationDbContext context, IConfiguration configuration)
-    {
-        _context = context;
- 
-        _configuration = configuration;
- 
-        _passwordHasher = new PasswordHasher<User>();
- 
-    }
-    public async Task<string> Registration(User model, string role)
- 
-    {
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
- 
-        if (existingUser != null)
- 
-        {
- 
-            return "User already exists";
- 
-        }
-        model.UserRole = role;
-        model.Password = _passwordHasher.HashPassword(model, model.Password);
-        return "User registered successfully";
- 
-    }
-    public async Task<string?> Login(LoginModel model)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
-        if (user == null)
-        {
-            return null;
-        }
-        var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.Password, model.Password);
- 
-        if (verificationResult == PasswordVerificationResult.Failed)
-        {
-            return null;
-        }
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, user.Username),
- 
-            new Claim(ClaimTypes.Email, user.Email),
- 
-            new Claim(ClaimTypes.Role, user.UserRole),
- 
-            new Claim("UserId", user.UserId.ToString())
-        };
-        return GenerateToken(claims);
-    }
-    public string GenerateToken(IEnumerable<Claim> claims)
- 
-    {
- 
-        var key = _configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtAuthentication12345";
- 
-        var issuer = _configuration["Jwt:Issuer"] ?? "dotnetapp";
- 
-        var audience = _configuration["Jwt:Audience"] ?? "dotnetapp_users";
- 
-        var duration = int.TryParse(_configuration["Jwt:DurationInMinutes"], out var mins) ? mins : 60;
- 
- 
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
- 
-        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
- 
- 
-        var token = new JwtSecurityToken(
- 
-            issuer: issuer,
- 
-            audience: audience,
- 
-            claims: claims,
- 
-            expires: DateTime.UtcNow.AddMinutes(duration),
- 
-            signingCredentials: credentials
- 
-        );
- 
- 
-        return new JwtSecurityTokenHandler().WriteToken(token);
- 
-    }
- 
-}
-}
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-     using System.Security.Claims;
-using dotnetapp.Models;
- 
-namespace dotnetapp.Services
-{
-public interface IAuthService
- 
-{
-       Task<string> Registration(User model, string role);
-   Task<string?> Login(LoginModel model);
- 
-    string GenerateToken(IEnumerable<Claim> claims);
- 
-}
-}
-   
- 
- 
-using System.Text;
- 
-using dotnetapp.Models;
- 
-using dotnetapp.Services;
- 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
- 
-using Microsoft.EntityFrameworkCore;
- 
-using Microsoft.IdentityModel.Tokens;
+
+
  
 var builder = WebApplication.CreateBuilder(args);
  
-builder.WebHost.UseUrls("http://0.0.0.0:8080");
-builder.Services.AddControllers();
  
-builder.Services.AddEndpointsApiExplorer();
- 
-builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
- 
-options.UseSqlServer("user id=sa;password=examlyMssql@123;database=appdb;server=localhost;persist security info=false;trusted_connection=false;encrypt=false;"));
- 
-builder.Services.AddScoped<IAuthService, AuthService>();
- 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtAuthentication12345";
- 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "dotnetapp";
- 
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "dotnetapp_users";
- 
-builder.Services.AddAuthentication(options =>
- 
-{
-options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-options.RequireHttpsMetadata = false;
-options.SaveToken = true;
-options.TokenValidationParameters = new TokenValidationParameters
-{
-    ValidateIssuer = true,
-    ValidateAudience = true,
-    ValidateLifetime = true,
-    ValidateIssuerSigningKey = true,
- 
-    ValidIssuer = jwtIssuer,
- 
-    ValidAudience = jwtAudience,
- 
-    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-};
-});
- 
-builder.Services.AddAuthorization();
+// Add services to the container.
+builder.Services.AddControllersWithViews();
  
 var app = builder.Build();
  
-app.UseSwagger();
-app.UseSwaggerUI();
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
  
-app.UseAuthentication();
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+ 
+app.UseRouting();
  
 app.UseAuthorization();
  
-app.MapControllers();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Slot}/{action=Index}/{id?}");
  
 app.Run();
+ 
+Info
+A bill like a multitool and plumage full of colour
  
