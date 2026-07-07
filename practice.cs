@@ -1,33 +1,75 @@
-character-count.pipe
 import { Pipe, PipeTransform } from '@angular/core';
  
 @Pipe({
-  name: 'characterCounter'
-})
-export class CharacterCounterPipe implements PipeTransform {
  
-  transform(value:string):number{
-    return value ? value.length : 0;
+  name: 'searchFilter'
+ 
+})
+ 
+export class SearchFilterPipe implements PipeTransform {
+ 
+  transform(items: any[], searchTerm: string): any[] {
+ 
+    if (!items || !searchTerm) {
+ 
+    return items;
+ 
+    }
+ 
+    searchTerm = searchTerm.toLowerCase();
+ 
+    return items.filter(item =>
+ 
+    JSON.stringify(item).toLowerCase().includes(searchTerm)
+ 
+    );
+ 
   }
+ 
 }
 ===============
-character-count.component.ts
-===
+.ts
 import { Component } from '@angular/core';
  
 @Component({
-  selector: 'app-character-count',
-  templateUrl: './character-count.component.html',
-  styleUrls: ['./character-count.component.css']
+ 
+  selector: 'app-search',
+ 
+  templateUrl: './search.component.html',
+ 
+  styleUrls: ['./search.component.css']
+ 
 })
-export class CharacterCountComponent {
-      inputText:string='';
+ 
+export class SearchComponent {
+ 
+  searchText: string = '';
+ 
+  items = [
+ 
+    { id: 1, name: 'Apple', category: 'Fruit' },
+ 
+    { id: 2, name: 'Banana', category: 'Fruit' },
+ 
+    { id: 3, name: 'Carrot', category: 'Vegetable' }
+ 
+  ];
+ 
 }
-======
-character-count.component.html
+=========
+.html
+<input type="text" [(ngModel)]="searchText" placeholder="Search..." />
+ 
 <div>
-<input type="text" [(ngModel)]="inputText" placeholder="Enter text">
-</div>
-<div>
-<p>Number of characters: {{inputText |characterCounter}}</p>
+ 
+<ul>
+ 
+    <li *ngFor="let item of items | searchFilter: searchText">
+ 
+    {{ item.name }} - {{ item.category }}
+ 
+    </li>
+ 
+</ul>
+ 
 </div>
