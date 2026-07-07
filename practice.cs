@@ -1,402 +1,547 @@
-Models/Doctor.cs
-using System.Collections.Generic;
-
-namespace dotnetapp.Models
-{
-    public class Doctor
-    {
-        public int DoctorId { get; set; }
-
-        public string Name { get; set; }
-
-        public string Specialization { get; set; }
-
-        public decimal ConsultationFee { get; set; }
-
-        public ICollection<Patient>? Patients { get; set; }
-    }
-}
-
-Models/Patient.cs
 using System;
-
-namespace dotnetapp.Models
-{
-    public class Patient
-    {
-        public int PatientId { get; set; }
-
-        public string Name { get; set; }
-
-        public int Age { get; set; }
-
-        public string Condition { get; set; }
-
-        public DateTime AppointmentDate { get; set; }
-
-        public int? DoctorId { get; set; }
-
-        public Doctor? Doctor { get; set; }
-    }
-}
-
-Models/User.cs
-namespace dotnetapp.Models
-{
-    public class User
-    {
-        public long Id { get; set; }
-
-        public string Username { get; set; }
-
-        public string Password { get; set; }
-
-        public string Role { get; set; }
-    }
-}
-
-Models/LoginModel.cs
-namespace dotnetapp.Models
-{
-    public class LoginModel
-    {
-        public string Username { get; set; }
-
-        public string Password { get; set; }
-    }
-}
-
-Models/ApplicationDbContext.cs
-using Microsoft.EntityFrameworkCore;
-
-namespace dotnetapp.Models
-{
-    public class ApplicationDbContext : DbContext
-    {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        {
-        }
-
-        public DbSet<Doctor> Doctors { get; set; }
-
-        public DbSet<Patient> Patients { get; set; }
-
-        public DbSet<User> Users { get; set; }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<Doctor>().ToTable("Doctors");
-
-            modelBuilder.Entity<Patient>().ToTable("Patients");
-
-            base.OnModelCreating(modelBuilder);
-        }
-    }
-}
-
-appsettings.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"
-  }
-}
-
-Program.cs
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using dotnetapp.Models;
-using Microsoft.EntityFrameworkCore;
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllers();
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
+ 
+using dotnetapp.Services;
+ 
+using Microsoft.AspNetCore.Mvc;
+namespace dotnetapp.Controllers
+{
+   
+ 
+[ApiController]
+ 
+[Route("api")]
+ 
+public class AuthenticationController : ControllerBase
+ 
+{
+    private readonly IAuthService _authService;
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<AuthenticationController> _logger;
+    public AuthenticationController(
+        IAuthService authService,
+        ApplicationDbContext context,
+ 
+        ILogger<AuthenticationController> logger)
     {
-        options.JsonSerializerOptions.ReferenceHandler =
-            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
-
+        _authService = authService;
+        _context = context;
+        _logger = logger;
+    }
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginModel model)
+    {
+        try
+        {
+ 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var token = await _authService.Login(model);
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { message = "Invalid email or password" });
+            }
+            return Ok(new { token = token });
+        }
+ 
+        catch (Exception ex)
+ 
+        {
+ 
+            _logger.LogError(ex, "Error occurred during login");
+ 
+            return BadRequest(new { message = "An error occurred during login" });
+ 
+        }
+ 
+    }
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] User user)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            if (user.UserRole != "Admin" && user.UserRole != "Customer")
+            {
+                return BadRequest(new { message = "Invalid user role. Allowed roles are Admin or Customer" });
+            }
+            var result = await _authService.Registration(user, user.UserRole);
+ 
+            if (result != "User registered successfully")
+            {
+                return BadRequest(new { message = result });
+            }
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = result });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred during registration");
+ 
+            return BadRequest(new { message = "An error occurred during registration" });
+ 
+        }
+ 
+    }
+ 
+}
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using dotnetapp.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+namespace dotnetapp.Controllers
+{
+ 
+    [ApiController]
+ 
+    [Route("api/plants")]
+ 
+    [Authorize]
+    public class PlantController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+   public PlantController(ApplicationDbContext context)
+        {
+            _context = context;
+ 
+        }
+        [HttpGet]
+        public async Task<IActionResult> Get()
+ 
+        {
+            var plants = await _context.Plants.ToListAsync();
+ 
+            return Ok(plants);
+        }
+ 
+ 
+        [HttpGet("{id}")]
+ 
+        public async Task<IActionResult> GetById(int id)
+ 
+        {
+ 
+            var plant = await _context.Plants.FindAsync(id);
+ 
+ 
+            if (plant == null)
+ 
+            {
+ 
+                return NotFound();
+ 
+            }
+ 
+   return Ok(plant);
+ 
+        }
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+ 
+        public async Task<IActionResult> Post([FromBody] Plant plant)
+        {
+ 
+            if (plant == null)
+{
+ 
+                return BadRequest(new { message = "Plant data is required" });
+ 
+            }
+            _context.Plants.Add(plant);
+ 
+            await _context.SaveChangesAsync();
+ 
+ 
+            return CreatedAtAction(nameof(GetById), new { id = plant.PlantId }, plant);
+ 
+        }
+ 
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+namespace dotnetapp.Models
+{
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options): base(options)
+ 
+    {
+    }
+    public DbSet<User> Users { get; set; }
+ 
+    public DbSet<Plant> Plants { get; set; }
+ 
+}
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Identity;
+ 
+namespace dotnetapp.Models
+{
+    public class ApplicationUsers : IdentityUser
+    {
+        [MaxLength(30)]
+ 
+        public string? Name {get; set;}
+ 
+ 
+       
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+namespace dotnetapp.Models
+{
+public class LoginModel
+{
+    [Required]
+ 
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    [Required]
+    public string Password { get; set; } = string.Empty;
+ 
+}
+}
+ 
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+ 
+namespace dotnetapp.Models
+{
+public class Plant
+{
+    [Key]
+    public int PlantId { get; set; }
+    [Required]
+ 
+    public string Name { get; set; } = string.Empty;
+    [Required]
+     public string ScientificName { get; set; } = string.Empty;
+ 
+    [Required]
+ 
+    public string Description { get; set; } = string.Empty;
+    [Required]
+ 
+    public double Price { get; set; }
+ 
+}
+}
+ 
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+ 
+namespace dotnetapp.Models
+{
+    public class RegistrationModel
+    {
+        [Required]
+        public string Username {get; set;}
+ 
+        [EmailAddress]
+        [Required]
+ 
+        public string Email {get; set;}
+ 
+        [Required]
+        public string MobileNumber {get; set;}
+ 
+        [Required]
+        public string Password {get; set;}
+ 
+        [Required]
+        public string UserRole {get; set;}
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+        using System.ComponentModel.DataAnnotations;
+namespace dotnetapp.Models
+{
+public class User
+ 
+{
+    [Key]
+    public long UserId { get; set; }
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    [Required]
+    public string Password { get; set; } = string.Empty;
+    [Required]
+ 
+    public string Username { get; set; } = string.Empty;
+ 
+    [Required]
+    public string MobileNumber { get; set; } = string.Empty;
+ 
+    [Required]
+    public string UserRole { get; set; } = string.Empty;
+ 
+}
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+ 
+namespace dotnetapp.Models
+{
+    public static class UserRoles
+    {
+        public const string Admin = "Admin";
+ 
+        public const string User = "Customer";
+       
+    }
+}
+ 
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+    using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using dotnetapp.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+namespace dotnetapp.Services
+ 
+{
+public class AuthService : IAuthService
+{
+    private readonly ApplicationDbContext _context;
+       private readonly IConfiguration _configuration;
+    private readonly PasswordHasher<User> _passwordHasher;
+    public AuthService(ApplicationDbContext context, IConfiguration configuration)
+    {
+        _context = context;
+ 
+        _configuration = configuration;
+ 
+        _passwordHasher = new PasswordHasher<User>();
+ 
+    }
+    public async Task<string> Registration(User model, string role)
+ 
+    {
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+ 
+        if (existingUser != null)
+ 
+        {
+ 
+            return "User already exists";
+ 
+        }
+        model.UserRole = role;
+        model.Password = _passwordHasher.HashPassword(model, model.Password);
+        return "User registered successfully";
+ 
+    }
+    public async Task<string?> Login(LoginModel model)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+        if (user == null)
+        {
+            return null;
+        }
+        var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.Password, model.Password);
+ 
+        if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            return null;
+        }
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.Username),
+ 
+            new Claim(ClaimTypes.Email, user.Email),
+ 
+            new Claim(ClaimTypes.Role, user.UserRole),
+ 
+            new Claim("UserId", user.UserId.ToString())
+        };
+        return GenerateToken(claims);
+    }
+    public string GenerateToken(IEnumerable<Claim> claims)
+ 
+    {
+ 
+        var key = _configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtAuthentication12345";
+ 
+        var issuer = _configuration["Jwt:Issuer"] ?? "dotnetapp";
+ 
+        var audience = _configuration["Jwt:Audience"] ?? "dotnetapp_users";
+ 
+        var duration = int.TryParse(_configuration["Jwt:DurationInMinutes"], out var mins) ? mins : 60;
+ 
+ 
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+ 
+        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+ 
+ 
+        var token = new JwtSecurityToken(
+ 
+            issuer: issuer,
+ 
+            audience: audience,
+ 
+            claims: claims,
+ 
+            expires: DateTime.UtcNow.AddMinutes(duration),
+ 
+            signingCredentials: credentials
+ 
+        );
+ 
+ 
+        return new JwtSecurityTokenHandler().WriteToken(token);
+ 
+    }
+ 
+}
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+     using System.Security.Claims;
+using dotnetapp.Models;
+ 
+namespace dotnetapp.Services
+{
+public interface IAuthService
+ 
+{
+       Task<string> Registration(User model, string role);
+   Task<string?> Login(LoginModel model);
+ 
+    string GenerateToken(IEnumerable<Claim> claims);
+ 
+}
+}
+   
+ 
+ 
+using System.Text;
+ 
+using dotnetapp.Models;
+ 
+using dotnetapp.Services;
+ 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+ 
+using Microsoft.EntityFrameworkCore;
+ 
+using Microsoft.IdentityModel.Tokens;
+ 
+var builder = WebApplication.CreateBuilder(args);
+ 
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
+builder.Services.AddControllers();
+ 
+builder.Services.AddEndpointsApiExplorer();
+ 
+builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+ 
+options.UseSqlServer("user id=sa;password=examlyMssql@123;database=appdb;server=localhost;persist security info=false;trusted_connection=false;encrypt=false;"));
+ 
+builder.Services.AddScoped<IAuthService, AuthService>();
+ 
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtAuthentication12345";
+ 
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "dotnetapp";
+ 
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "dotnetapp_users";
+ 
+builder.Services.AddAuthentication(options =>
+ 
+{
+options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+options.RequireHttpsMetadata = false;
+options.SaveToken = true;
+options.TokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+    ValidateIssuerSigningKey = true,
+ 
+    ValidIssuer = jwtIssuer,
+ 
+    ValidAudience = jwtAudience,
+ 
+    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+};
+});
+ 
+builder.Services.AddAuthorization();
+ 
 var app = builder.Build();
-
+ 
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseHttpsRedirection();
-
+ 
+app.UseAuthentication();
+ 
 app.UseAuthorization();
-
+ 
 app.MapControllers();
-
+ 
 app.Run();
-
-Controllers/DoctorController.cs
-using dotnetapp.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-namespace dotnetapp.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    public class DoctorController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-
-        public DoctorController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpGet("GetDoctors")]
-        public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
-        {
-            try
-            {
-                return Ok(await _context.Doctors
-                    .Include(d => d.Patients)
-                    .ToListAsync());
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("PostDoctor")]
-        public async Task<ActionResult<Doctor>> PostDoctor(Doctor doctor)
-        {
-            try
-            {
-                _context.Doctors.Add(doctor);
-                await _context.SaveChangesAsync();
-
-                return CreatedAtAction(nameof(GetDoctors),
-                    new { id = doctor.DoctorId }, doctor);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPut("PutDoctor/{id}")]
-        public async Task<IActionResult> PutDoctor(int id, Doctor doctor)
-        {
-            try
-            {
-                if (id != doctor.DoctorId)
-                    return BadRequest();
-
-                _context.Entry(doctor).State = EntityState.Modified;
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete("DeleteDoctor/{id}")]
-        public async Task<IActionResult> DeleteDoctor(int id)
-        {
-            try
-            {
-                var doctor = await _context.Doctors
-                    .Include(d => d.Patients)
-                    .FirstOrDefaultAsync(d => d.DoctorId == id);
-
-                if (doctor == null)
-                    return NotFound();
-
-                if (doctor.Patients != null && doctor.Patients.Any())
-                    return Conflict("Doctor has associated patients.");
-
-                _context.Doctors.Remove(doctor);
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-    }
-}
-
-Controllers/PatientController.cs
-using dotnetapp.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-namespace dotnetapp.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    public class PatientController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-
-        public PatientController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpGet("GetPatients")]
-        public async Task<ActionResult<IEnumerable<Patient>>> GetPatients()
-        {
-            try
-            {
-                return Ok(await _context.Patients
-                    .Include(p => p.Doctor)
-                    .ToListAsync());
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("PostPatient")]
-        public async Task<ActionResult<Patient>> PostPatient(Patient patient)
-        {
-            try
-            {
-                _context.Patients.Add(patient);
-
-                await _context.SaveChangesAsync();
-
-                return CreatedAtAction(nameof(GetPatients),
-                    new { id = patient.PatientId }, patient);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPut("PutPatient/{id}")]
-        public async Task<IActionResult> PutPatient(int id, Patient patient)
-        {
-            try
-            {
-                if (id != patient.PatientId)
-                    return BadRequest();
-
-                _context.Entry(patient).State = EntityState.Modified;
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete("DeletePatient/{id}")]
-        public async Task<IActionResult> DeletePatient(int id)
-        {
-            try
-            {
-                var patient = await _context.Patients.FindAsync(id);
-
-                if (patient == null)
-                    return NotFound();
-
-                _context.Patients.Remove(patient);
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-    }
-}
-
-Controllers/UserController.cs
-using dotnetapp.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-namespace dotnetapp.Controllers
-{
-    [ApiController]
-    [Route("api/users")]
-    public class UserController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-
-        private readonly string[] validRoles =
-        {
-            "Admin",
-            "Organizer"
-        };
-
-        public UserController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(User user)
-        {
-            if (!IsValidRole(user.Role))
-                return BadRequest("Invalid role");
-
-            if (await _context.Users
-                .AnyAsync(x => x.Username == user.Username))
-            {
-                return Conflict("Username already exists");
-            }
-
-            _context.Users.Add(user);
-
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(Register),
-                new { id = user.Id }, user);
-        }
-
-        [HttpPost("login")]
-        public async Task<ActionResult<object>> Login(LoginModel user)
-        {
-            var existingUser = await _context.Users
-                .FirstOrDefaultAsync(x =>
-                    x.Username == user.Username &&
-                    x.Password == user.Password);
-
-            if (existingUser == null)
-                return BadRequest("Login failed");
-
-            return Ok(new
-            {
-                Message = "Login Successful",
-                User = existingUser
-            });
-        }
-
-        private bool IsValidRole(string role)
-        {
-            return validRoles.Contains(role);
-        }
-    }
-}
-
+ 
