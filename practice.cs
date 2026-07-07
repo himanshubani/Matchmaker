@@ -1,97 +1,90 @@
-shopping-list.component.ts
-import { Component } from '@angular/core';
- 
-interface Item {
- 
-  name: string;
- 
-  purchased: boolean;
- 
-}
- 
-@Component({
- 
-  selector: 'app-shopping-list',
- 
-  templateUrl: './shopping-list.component.html',
- 
-  styleUrls: ['./shopping-list.component.css']
- 
-})
- 
-export class ShoppingListComponent {
- 
-  items: Item[] = [];
- 
-  newItemName: string = '';
- 
-  addItem(): void {
- 
-    if (this.newItemName.trim() !== '') {
- 
-    this.items.push({
- 
-    name: this.newItemName,
- 
-    purchased: false
- 
-    });
- 
-    this.newItemName = '';
- 
+recipe.model.ts
+export class Recipe{
+    id:number;
+    name:string;
+    type:string;
+    ingredients:string[];
+    instructions:string;
+    constructor(
+        id:number,
+        name:string,
+        type:string,
+        ingredients:string[],
+        instructions:string
+    ){
+        this.id=id;
+        this.name=name;
+        this.type=type;
+        this.ingredients=ingredients;
+        this.instructions=instructions;
     }
+}
+============
+recipe-list.component.ts
+import { Component } from '@angular/core';
+//import { Recipe } from '../model/recipe.model';
+export interface Recipe{
+       id:number,
+       name:string,
+      type:string,
+       ingredients:string[],
+     instructions:string
+}
+@Component({
+  selector: 'app-recipe-list',
+  templateUrl: './recipe-list.component.html',
+  styleUrls: ['./recipe-list.component.css']
+})
+export class RecipeListComponent {
+  recipes: Recipe[]=[
+    {
+    id:1,
+    name:'Pancakes',
+    type:'Breakfast',
+    ingredients:['Flour','Milk','Eggs','Butter'],
+    instructions:'Mix flour,milk and eggs.Cook in a pan with butter.'
+    },
+    {
+      id:2,
+      name:'Spaghetti Carbonara',
+      type:'Dinner',
+      ingredients:['Spaghetti','Eggs','Bacon','Parmesan cheese'],
+      instructions:'Mix flour,milk and eggs.Cook in a pan with butter.'
+    }
+
  
+  ];
+  selectedRecipe: Recipe|null =null;
+  showDetails(recipe:Recipe): void{
+      this.selectedRecipe=recipe;
   }
- 
-  purchaseItem(item: Item): void {
- 
-    item.purchased = !item.purchased;
- 
+  hideDetails(){
+    this.selectedRecipe=null;
   }
- 
-  deleteItem(index: number): void {
- 
-    this.items.splice(index, 1);
- 
+  deleteRecipe(recipe:Recipe){
+     this.recipes=this.recipes.filter(r=>r.id!==recipe.id);
+     if(this.selectedRecipe?.id===recipe.id){
+      this.selectedRecipe=null;
+     }
   }
  
 }
-===========
-shopping-list.component.html
-<h2>Shopping List</h2>
- 
-<input
- 
-  type="text"
- 
-  [(ngModel)]="newItemName"
- 
-  placeholder="Enter item name">
- 
-<button (click)="addItem()">Add Item`</button>`
- 
-<ul>
- 
-<li *ngFor="let item of items; let i = index">
- 
-    <span>{{ item.name }}</span>
- 
-    <button (click)="purchaseItem(item)">
- 
-    Purchased
- 
-    </button>
- 
-    <button (click)="deleteItem(i)">
- 
-    Delete
- 
-    </button>
- 
-</li>
- 
-</ul>
- 
-==========
-app.component.html
-<app-shopping-list></app-shopping-list>
+=============
+recipe-list.component.html
+<h1 class="heading">Recipe Manager</h1>
+<div class="recipe-list">
+<div *ngFor="let recipe of recipes" class="recipe">
+<h3>{{recipe.name}}({{recipe.type}})</h3>
+<p>{{recipe.ingredients.join(', ')}}</p>
+<button (click)="showDetails(recipe)">View Details</button>
+</div>
+</div>
+<div *ngIf="selectedRecipe" class="recipe-details-container">
+<h2>Recipe Details</h2>
+<p><strong>Name:</strong>{{selectedRecipe.name}}</p>
+<p><strong>Type:</strong>{{selectedRecipe.type}}</p>
+<p><strong>Ingredients:</strong>{{selectedRecipe.ingredients.join(', ')}}</p>
+<p><strong>Instructions:</strong>{{selectedRecipe.instructions}}</p>
+<button (click)="hideDetails()">Hide Details</button>
+<button (click)="deleteRecipe(selectedRecipe)">Delete</button>
+</div>
