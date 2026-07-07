@@ -1,23 +1,6 @@
-mkdir -p Controllers Models Migrations Properties \
-angularapp/src/models
+Models/Doctor.cs
+using System.Collections.Generic;
 
-touch \
-Controllers/DoctorController.cs \
-Controllers/PatientController.cs \
-Controllers/UserController.cs \
-Models/Doctor.cs \
-Models/Patient.cs \
-Models/User.cs \
-Models/LoginModel.cs \
-Models/ApplicationDbContext.cs \
-Program.cs \
-appsettings.json \
-angularapp/src/models/doctor.model.ts \
-angularapp/src/models/patient.model.ts \
-angularapp/src/models/user.model.ts \
-angularapp/src/models/login-model.model.ts
-
-Doctor.cs
 namespace dotnetapp.Models
 {
     public class Doctor
@@ -34,7 +17,9 @@ namespace dotnetapp.Models
     }
 }
 
-Patient.cs
+Models/Patient.cs
+using System;
+
 namespace dotnetapp.Models
 {
     public class Patient
@@ -55,7 +40,7 @@ namespace dotnetapp.Models
     }
 }
 
-User.cs
+Models/User.cs
 namespace dotnetapp.Models
 {
     public class User
@@ -70,7 +55,7 @@ namespace dotnetapp.Models
     }
 }
 
-LoginModel.cs
+Models/LoginModel.cs
 namespace dotnetapp.Models
 {
     public class LoginModel
@@ -81,15 +66,14 @@ namespace dotnetapp.Models
     }
 }
 
-ApplicationDbContext.cs
+Models/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
 
 namespace dotnetapp.Models
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(
-            DbContextOptions<ApplicationDbContext> options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
@@ -99,10 +83,61 @@ namespace dotnetapp.Models
         public DbSet<Patient> Patients { get; set; }
 
         public DbSet<User> Users { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Doctor>().ToTable("Doctors");
+
+            modelBuilder.Entity<Patient>().ToTable("Patients");
+
+            base.OnModelCreating(modelBuilder);
+        }
     }
 }
 
-DoctorController.cs
+appsettings.json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"
+  }
+}
+
+Program.cs
+using dotnetapp.Models;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+
+var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+Controllers/DoctorController.cs
 using dotnetapp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -123,64 +158,85 @@ namespace dotnetapp.Controllers
         [HttpGet("GetDoctors")]
         public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
         {
-            return Ok(await _context.Doctors
-                .Include(d => d.Patients)
-                .ToListAsync());
+            try
+            {
+                return Ok(await _context.Doctors
+                    .Include(d => d.Patients)
+                    .ToListAsync());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost("PostDoctor")]
         public async Task<ActionResult<Doctor>> PostDoctor(Doctor doctor)
         {
-            _context.Doctors.Add(doctor);
+            try
+            {
+                _context.Doctors.Add(doctor);
+                await _context.SaveChangesAsync();
 
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(
-                nameof(GetDoctors),
-                new { id = doctor.DoctorId },
-                doctor);
+                return CreatedAtAction(nameof(GetDoctors),
+                    new { id = doctor.DoctorId }, doctor);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("PutDoctor/{id}")]
         public async Task<IActionResult> PutDoctor(int id, Doctor doctor)
         {
-            if (id != doctor.DoctorId)
-                return BadRequest();
+            try
+            {
+                if (id != doctor.DoctorId)
+                    return BadRequest();
 
-            _context.Entry(doctor).State =
-                EntityState.Modified;
+                _context.Entry(doctor).State = EntityState.Modified;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("DeleteDoctor/{id}")]
         public async Task<IActionResult> DeleteDoctor(int id)
         {
-            var doctor =
-                await _context.Doctors
-                .Include(x => x.Patients)
-                .FirstOrDefaultAsync(x => x.DoctorId == id);
+            try
+            {
+                var doctor = await _context.Doctors
+                    .Include(d => d.Patients)
+                    .FirstOrDefaultAsync(d => d.DoctorId == id);
 
-            if (doctor == null)
-                return NotFound();
+                if (doctor == null)
+                    return NotFound();
 
-            if (doctor.Patients != null &&
-                doctor.Patients.Any())
-                return Conflict(
-                    "Doctor has associated patients");
+                if (doctor.Patients != null && doctor.Patients.Any())
+                    return Conflict("Doctor has associated patients.");
 
-            _context.Doctors.Remove(doctor);
+                _context.Doctors.Remove(doctor);
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
 
-PatientController.cs
+Controllers/PatientController.cs
 using dotnetapp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -201,59 +257,81 @@ namespace dotnetapp.Controllers
         [HttpGet("GetPatients")]
         public async Task<ActionResult<IEnumerable<Patient>>> GetPatients()
         {
-            return Ok(await _context.Patients
-                .Include(p => p.Doctor)
-                .ToListAsync());
+            try
+            {
+                return Ok(await _context.Patients
+                    .Include(p => p.Doctor)
+                    .ToListAsync());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost("PostPatient")]
         public async Task<ActionResult<Patient>> PostPatient(Patient patient)
         {
-            _context.Patients.Add(patient);
+            try
+            {
+                _context.Patients.Add(patient);
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(GetPatients),
-                new { id = patient.PatientId },
-                patient);
+                return CreatedAtAction(nameof(GetPatients),
+                    new { id = patient.PatientId }, patient);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("PutPatient/{id}")]
-        public async Task<IActionResult> PutPatient(
-            int id,
-            Patient patient)
+        public async Task<IActionResult> PutPatient(int id, Patient patient)
         {
-            if (id != patient.PatientId)
-                return BadRequest();
+            try
+            {
+                if (id != patient.PatientId)
+                    return BadRequest();
 
-            _context.Entry(patient).State =
-                EntityState.Modified;
+                _context.Entry(patient).State = EntityState.Modified;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("DeletePatient/{id}")]
         public async Task<IActionResult> DeletePatient(int id)
         {
-            var patient =
-                await _context.Patients.FindAsync(id);
+            try
+            {
+                var patient = await _context.Patients.FindAsync(id);
 
-            if (patient == null)
-                return NotFound();
+                if (patient == null)
+                    return NotFound();
 
-            _context.Patients.Remove(patient);
+                _context.Patients.Remove(patient);
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
 
-UserController.cs
+Controllers/UserController.cs
 using dotnetapp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -266,58 +344,52 @@ namespace dotnetapp.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public UserController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
         private readonly string[] validRoles =
         {
             "Admin",
             "Organizer"
         };
 
+        public UserController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(
-            User user)
+        public async Task<ActionResult<User>> Register(User user)
         {
             if (!IsValidRole(user.Role))
-                return BadRequest("Invalid Role");
+                return BadRequest("Invalid role");
 
-            bool exists =
-                await _context.Users.AnyAsync(
-                    x => x.Username == user.Username);
-
-            if (exists)
-                return Conflict();
+            if (await _context.Users
+                .AnyAsync(x => x.Username == user.Username))
+            {
+                return Conflict("Username already exists");
+            }
 
             _context.Users.Add(user);
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(Register),
-                new { id = user.Id },
-                user);
+            return CreatedAtAction(nameof(Register),
+                new { id = user.Id }, user);
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<object>> Login(
-            LoginModel login)
+        public async Task<ActionResult<object>> Login(LoginModel user)
         {
-            var user =
-                await _context.Users.FirstOrDefaultAsync(
-                    x => x.Username == login.Username &&
-                         x.Password == login.Password);
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Username == user.Username &&
+                    x.Password == user.Password);
 
-            if (user == null)
-                return BadRequest(
-                    new { Message = "Login Failed" });
+            if (existingUser == null)
+                return BadRequest("Login failed");
 
             return Ok(new
             {
                 Message = "Login Successful",
-                User = user
+                User = existingUser
             });
         }
 
@@ -327,48 +399,4 @@ namespace dotnetapp.Controllers
         }
     }
 }
-
-Program.cs
-using dotnetapp.Models;
-using Microsoft.EntityFrameworkCore;
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllers();
-
-builder.Services.AddDbContext<ApplicationDbContext>(
-options =>
-options.UseSqlServer(
-builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddEndpointsApiExplorer();
-
-builder.Services.AddSwaggerGen()
-;
-
-var app = builder.Build();
-
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.MapControllers();
-
-app.Run();
-
-appsettings.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"
-  },
-
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-
-  "AllowedHosts": "*"
-}
-
 
