@@ -1,3 +1,22 @@
+mkdir -p Controllers Models Migrations Properties \
+angularapp/src/models
+
+touch \
+Controllers/DoctorController.cs \
+Controllers/PatientController.cs \
+Controllers/UserController.cs \
+Models/Doctor.cs \
+Models/Patient.cs \
+Models/User.cs \
+Models/LoginModel.cs \
+Models/ApplicationDbContext.cs \
+Program.cs \
+appsettings.json \
+angularapp/src/models/doctor.model.ts \
+angularapp/src/models/patient.model.ts \
+angularapp/src/models/user.model.ts \
+angularapp/src/models/login-model.model.ts
+
 Doctor.cs
 namespace dotnetapp.Models
 {
