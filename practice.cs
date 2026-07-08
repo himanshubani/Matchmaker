@@ -1,199 +1,248 @@
-
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using MusicianBookingSystem.Exceptions;
+using MusicianBookingSystem.Models;
  
-eventform.component.ts
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+namespace MusicianBookingSystem.Controllers
+{
+    // [Route("[controller]")]
+    public class BookingController : Controller
+    {
+        private readonly ApplicationDbContext db;
  
-@Component({
-  selector: 'app-eventform',
-  templateUrl: './eventform.component.html',
-  styleUrls: ['./eventform.component.css']
-})
-export class EventformComponent implements OnInit {
+        public BookingController(ApplicationDbContext db1)
+        {
+            db = db1;
+        }
  
-  registrationForm!: FormGroup;
+        public IActionResult Index()
+        {
+            var slots = db.Slots.ToList();
+            return View(slots);
+        }
  
-  submitted: boolean = false;
+        public IActionResult Book(int id)
+        {
+            var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
+            if(slot == null)
+                return View(new Slot());
+            return View(slot);
+        }
  
-  formData: any = {};
+        [HttpPost]
+        public IActionResult Book(int id, int Userid)
+        {
+            try
+            {
+                var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
+                if (slot == null)
+                    return NotFound();
+                if (slot.Bookings.Count >= 5)
+                    throw new SlotBookingException("Slot is full.");
+                if (slot.Bookings.Any(b => b.UserID == Userid))
+                    throw new SlotBookingException("You have already booked this slot.");
+                Booking booking = new Booking
+                {
+                    SlotID = id,
+                    UserID = Userid,
+                    Slot = slot
  
-  sportsList: string[] = [
-    'Football',
-    'Basketball',
-    'Athletics',
-    'Tennis'
-  ];
+                };
+                slot.Bookings.Add(booking);
+                db.Bookings.Add(booking);
+                db.SaveChanges();
+                return View("Book",slot);
+            }
+            catch(SlotBookingException ex)
+            {
+                ViewBag.Error = ex.Message;
+                return View("Book", db.Slots.FirstOrDefault(s => s.SlotID == id));
+            }
+        }
+        public IActionResult Summary(int Userid)
+        {
+            var b=db.Bookings.Where(bb=>bb.UserID == Userid).ToList();
+            return View(b);
+        }
  
-  constructor(private fb: FormBuilder) { }
  
-  ngOnInit(): void {
- 
-    this.registrationForm = this.fb.group({
-      name: [''],
-      age: [''],
-      grade: [''],
-      gender: [''],
-      email: [''],
-      phone: [''],
-      sports: this.fb.group({
-        Football: [false],
-        Basketball: [false],
-        Athletics: [false],
-        Tennis: [false]
-      })
-    });
-  }
- 
-  getSelectedSports(): string {
- 
-    const selectedSports = Object.keys(
-      this.registrationForm.get('sports')?.value
-    ).filter(
-      key => this.registrationForm.get('sports')?.value[key]
-    );
- 
-    return selectedSports.join(', ');
-  }
- 
-  onSubmit(): void {
- 
-    this.submitted = true;
- 
-    this.formData = {
-      ...this.registrationForm.value,
-      sports: this.getSelectedSports()
-    };
- 
-    this.registrationForm.reset();
- 
-    this.registrationForm.patchValue({
-      sports: {
-        Football: false,
-        Basketball: false,
-        Athletics: false,
-        Tennis: false
-      }
-    });
-  }
- 
-  closeModal(): void {
-    this.submitted = false;
-  }
+    }
 }
  
  
-eventform.component.html
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using MusicianBookingSystem.Models;
  
-<h1>Registration Form</h1>
+namespace MusicianBookingSystem.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly ILogger<HomeController> _logger;
  
-<form [formGroup]="registrationForm" (ngSubmit)="onSubmit()">
+        public HomeController(ILogger<HomeController> logger)
+        {
+            _logger = logger;
+        }
  
-<div>
-    <label class="form-label">Name:*</label>
-    <input type="text" formControlName="name">
-  </div>
+        public IActionResult Index()
+        {
+            return View();
+        }
  
-<div>
-    <label class="form-label">Age:*</label>
-    <input type="number" formControlName="age">
-  </div>
+        public IActionResult Privacy()
+        {
+            return View();
+        }
  
-<div>
-    <label class="form-label">Grade:*</label>
-    <input type="text" formControlName="grade">
-  </div>
- 
-<div>
-    <label class="form-label">Gender:*</label>
-    <input type="text" formControlName="gender">
-  </div>
- 
-<div>
-    <label class="form-label">Sports*</label>
- 
-    `<div formGroupName="sports">`
-      `<label>`
-        `<input type="checkbox" formControlName="Football">`
-        Football
-      `</label>`
- 
-    `<label>`
-        `<input type="checkbox" formControlName="Basketball">`
-        Basketball
-      `</label>`
- 
-    `<label>`
-        `<input type="checkbox" formControlName="Athletics">`
-        Athletics
-      `</label>`
- 
-    `<label>`
-        `<input type="checkbox" formControlName="Tennis">`
-        Tennis
-      `</label>`
-    `</div>`
- 
-</div>
- 
-<div>
-    <label class="form-label">Email:*</label>
-    <input type="email" formControlName="email">
-  </div>
- 
-<div>
-    <label class="form-label">Phone:*</label>
-    <input type="text" formControlName="phone">
-  </div>
- 
-  `<button type="submit">`Submit`</button>`
- 
-</form>
- 
-<div *ngIf="submitted">
- 
-<h3>Registration Successful</h3>
- 
-<p>Name: {{ formData.name }}</p>
-  <p>Age: {{ formData.age }}</p>
-  <p>Grade: {{ formData.grade }}</p>
-  <p>Gender: {{ formData.gender }}</p>
-  <p>Email: {{ formData.email }}</p>
-  <p>Phone: {{ formData.phone }}</p>
-  <p>Sports: {{ formData.sports }}</p>
- 
-<button type="button" (click)="closeModal()">
-    Close
-  </button>
- 
-</div>
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+    }
+}
  
  
-app.module.ts
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { ReactiveFormsModule } from '@angular/forms';
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using MusicianBookingSystem.Models;
  
-import { AppComponent } from './app.component';
-import { EventformComponent } from './eventform/eventform.component';
+namespace MusicianBookingSystem.Controllers
+{
+    // [Route("[controller]")]
+    public class SlotController : Controller
+    {
+        private readonly ApplicationDbContext db;
  
-@NgModule({
-  declarations: [
-    AppComponent,
-    EventformComponent
-  ],
-  imports: [
-    BrowserModule,
-    ReactiveFormsModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
+        public SlotController(ApplicationDbContext db1)
+        {
+            db=db1;
+        }
+ 
+        public IActionResult Index()
+        {
+            var slots = db.Slots.ToList();
+            return View(slots);
+        }
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+ 
+namespace MusicianBookingSystem.Exceptions
+{
+    public class SlotBookingException : Exception
+    {
+        public SlotBookingException (string message) : base(message) {}
+    }
+}
  
  
-app.component.html
-<app-eventform></app-eventform>
+ 
+using System.Reflection.Emit;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using MusicianBookingSystem.Models;
+using System.Collections.Generic;
+ 
+namespace MusicianBookingSystem.Models
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext>options):base(options){}
+ 
+        public DbSet<Slot>Slots{get;set;}
+         public DbSet<Booking> Bookings {get; set;}
+       
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+ 
+namespace MusicianBookingSystem.Models
+{
+    public class Booking{
+ 
+        public int BookingID {get; set;}
+ 
+        public int SlotID {get; set;}
+ 
+        public int UserID {get; set;}
+ 
+        public Slot Slot {get; set;}
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+ 
+namespace MusicianBookingSystem.Models
+{
+    public class Slot
+    {
+        [Key]
+        public int SlotID{get;set;}
+        public DateTime Time{get;set;}
+        public int Duration{get;set;}
+        public int Capacity{get;set;}
+        public List<Booking> Bookings{get;set;}=new List<Booking>();
+    }
+}
+ 
+
+
+ 
+var builder = WebApplication.CreateBuilder(args);
  
  
-7 July session 3 cod 1
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+ 
+var app = builder.Build();
+ 
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+ 
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+ 
+app.UseRouting();
+ 
+app.UseAuthorization();
+ 
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Slot}/{action=Index}/{id?}");
+ 
+app.Run();
+ 
+Info
+A bill like a multitool and plumage full of colour
  
