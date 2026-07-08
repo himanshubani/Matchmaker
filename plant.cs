@@ -1,212 +1,248 @@
-2. task.model.ts
-export interface Task {
+food.model.ts
+export interface Food {
   id: number;
-  title: string;
+  name: string;
   description: string;
 }
 
-3. task.service.ts
+food.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Task } from '../model/task.model';
+import { Food } from '../model/food.model';
 
 @Injectable({
   providedIn: 'root'
 })
-export class TaskService {
+export class FoodService {
 
-  public apiUrl = 'http://localhost:3000/tasks';
+  public apiUrl = 'http://localhost:3000/foods';
 
   constructor(private http: HttpClient) { }
 
-  getTasks(): Observable<Task[]> {
-    return this.http.get<Task[]>(this.apiUrl);
+  getFoods(): Observable<Food[]> {
+    return this.http.get<Food[]>(this.apiUrl);
   }
 
-  addTask(task: Task): Observable<Task> {
-    return this.http.post<Task>(this.apiUrl, task);
+  addFood(food: Food): Observable<Food> {
+    return this.http.post<Food>(this.apiUrl, food);
+  }
+
+  updateFood(food: Food): Observable<Food> {
+    return this.http.put<Food>(
+      `${this.apiUrl}/${food.id}`,
+      food
+    );
+  }
+
+  deleteFood(foodId: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/${foodId}`
+    );
   }
 }
 
-4. task-list.component.ts
+food-list.component.ts
 import { Component, OnInit } from '@angular/core';
-import { Task } from '../model/task.model';
-import { TaskService } from '../services/task.service';
+import { Food } from '../model/food.model';
+import { FoodService } from '../services/food.service';
 
 @Component({
-  selector: 'app-task-list',
-  templateUrl: './task-list.component.html',
-  styleUrls: ['./task-list.component.css']
+  selector: 'app-food-list',
+  templateUrl: './food-list.component.html',
+  styleUrls: ['./food-list.component.css']
 })
-export class TaskListComponent implements OnInit {
+export class FoodListComponent implements OnInit {
 
-  tasks: Task[] = [];
+  foods: Food[] = [];
 
-  selectedTask: Task | null = null;
+  selectedFood!: Food;
 
-  newTask: Task = {
+  newFood: Food = {
     id: 0,
-    title: '',
+    name: '',
     description: ''
   };
 
-  constructor(private taskService: TaskService) { }
+  constructor(private foodService: FoodService) { }
 
   ngOnInit(): void {
-    this.loadTasks();
+    this.loadFoods();
   }
 
-  loadTasks(): void {
-    this.taskService.getTasks().subscribe(
-      (data) => {
-        this.tasks = data;
+  loadFoods(): void {
+    this.foodService.getFoods().subscribe(
+      (data: Food[]) => {
+        this.foods = data;
       }
     );
   }
 
-  addTask(): void {
+  addFood(): void {
 
-    const task: Task = {
-      id: Date.now(),
-      title: this.newTask.title,
-      description: this.newTask.description
-    };
+    if (this.newFood.id === 0) {
 
-    this.taskService.addTask(task).subscribe(
-      () => {
-        this.loadTasks();
+      const food: Food = {
+        id: Date.now(),
+        name: this.newFood.name,
+        description: this.newFood.description
+      };
 
-        this.newTask = {
+      this.foodService.addFood(food).subscribe(() => {
+
+        this.loadFoods();
+
+        this.newFood = {
           id: 0,
-          title: '',
+          name: '',
           description: ''
         };
-      }
-    );
+      });
+
+    } else {
+
+      this.updateFood();
+    }
+  }
+
+  editFood(food: Food): void {
+
+    this.selectedFood = food;
+
+    this.newFood = {
+      id: food.id,
+      name: food.name,
+      description: food.description
+    };
+  }
+
+  updateFood(): void {
+
+    this.foodService.updateFood(this.newFood)
+      .subscribe(() => {
+
+        this.loadFoods();
+
+        this.newFood = {
+          id: 0,
+          name: '',
+          description: ''
+        };
+      });
+  }
+
+  deleteFood(foodId: number): void {
+
+    this.foodService.deleteFood(foodId)
+      .subscribe(() => {
+
+        this.loadFoods();
+      });
   }
 }
 
-5. task-list.component.html
-<div class="container">
+food-list.component.html
+<h2>Food List</h2>
 
-    <h1>Task List</h1>
+<div *ngFor="let food of foods">
 
-    <div
-        class="task-item"
-        *ngFor="let task of tasks">
+  {{ food.name }} - {{ food.description }}
 
-        {{task.title}} - {{task.description}}
+  <button
+    type="button"
+    (click)="deleteFood(food.id)">
+    Delete
+  </button>
 
-    </div>
-
-    <h1>Add Task</h1>
-
-    <form (ngSubmit)="addTask()">
-
-        <label>Title:</label>
-
-        <input
-            type="text"
-            name="title"
-            [(ngModel)]="newTask.title"
-            required>
-
-        <label>Description:</label>
-
-        <textarea
-            name="description"
-            [(ngModel)]="newTask.description"
-            required>
-        </textarea>
-
-        <button type="submit">
-            Add Task
-        </button>
-
-    </form>
+  <button
+    type="button"
+    (click)="editFood(food)">
+    Edit
+  </button>
 
 </div>
 
-6. task-list.component.css
-.container {
-    width: 70%;
-    margin: auto;
-    text-align: center;
-}
+<h2>Add Food</h2>
 
-.task-item {
-    border: 1px solid lightgray;
-    padding: 15px;
-    margin: 15px 0;
-    text-align: left;
-}
+<form (ngSubmit)="addFood()">
 
-input,
-textarea {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    margin-bottom: 20px;
-}
+  <label>Name:</label>
 
-button {
-    padding: 10px 25px;
-    background-color: green;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
+  <input
+    type="text"
+    name="name"
+    [(ngModel)]="newFood.name">
 
-7. app.module.ts
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+  <br><br>
 
-import { AppComponent } from './app.component';
-import { TaskListComponent } from './task-list/task-list.component';
+  <label>Description:</label>
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    TaskListComponent
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule,
-    HttpClientModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
+  <textarea
+    name="description"
+    [(ngModel)]="newFood.description">
+  </textarea>
 
+  <br><br>
 
+  <button type="submit">
+    Add Food
+  </button>
 
-8. app.component.html
-<app-task-list></app-task-list>
+</form>
 
-9. db.json
+app.component.html
+<app-food-list></app-food-list>
+
+db.json
 {
-  "tasks": [
+  "foods": [
     {
       "id": 1,
-      "title": "Task 1",
-      "description": "Description for Task 1"
+      "name": "Dosa",
+      "description": "A popular South Indian dish made from fermented rice and lentil batter, served with chutney and sambar."
     },
     {
       "id": 2,
-      "title": "Task 2",
-      "description": "Description for Task 2"
+      "name": "Idli",
+      "description": "Soft and fluffy steamed rice cakes, usually served with coconut chutney and sambar."
     },
     {
       "id": 3,
-      "title": "Task 3",
-      "description": "Description for Task 3"
+      "name": "Vada",
+      "description": "Deep-fried savory donut made from fermented lentil batter, served with chutney and sambar."
+    },
+    {
+      "id": 4,
+      "name": "Masala Dosa",
+      "description": "Dosa filled with a spicy potato filling, served with chutney and sambar."
     }
   ]
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
