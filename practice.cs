@@ -1,173 +1,70 @@
+ 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using MusicianBookingSystem.Exceptions;
-using MusicianBookingSystem.Models;
+using dotnetapp.Services;
+using dotnetapp.Models;
  
-namespace MusicianBookingSystem.Controllers
+namespace dotnetapp.Controllers
 {
-    // [Route("[controller]")]
-    public class BookingController : Controller
+    [ApiController]
+    [Route("api/[controller]")]
+    public class EventController : ControllerBase
     {
-        private readonly ApplicationDbContext db;
- 
-        public BookingController(ApplicationDbContext db1)
-        {
+        private readonly EventService db;
+        public EventController(EventService db1){
             db = db1;
         }
- 
-        public IActionResult Index()
-        {
-            var slots = db.Slots.ToList();
-            return View(slots);
+        [HttpGet]
+        public IActionResult GetAllEvents(){
+            var events = db.GetAllEvents();
+            if(events.Count == 0){
+                return NoContent();
+            }
+            return Ok(events);
         }
- 
-        public IActionResult Book(int id)
-        {
-            var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
-            if(slot == null)
-                return View(new Slot());
-            return View(slot);
+        [HttpGet("{eventId}")]
+        public IActionResult GetEventById(int eventId){
+            var ev = db.GetEventById(eventId);
+            if(ev == null){
+                return NotFound();
+            }
+            return Ok(ev);
         }
- 
         [HttpPost]
-        public IActionResult Book(int id, int Userid)
-        {
-            try
-            {
-                var slot = db.Slots.FirstOrDefault(s => s.SlotID == id);
-                if (slot == null)
-                    return NotFound();
-                if (slot.Bookings.Count >= 5)
-                    throw new SlotBookingException("Slot is full.");
-                if (slot.Bookings.Any(b => b.UserID == Userid))
-                    throw new SlotBookingException("You have already booked this slot.");
-                Booking booking = new Booking
-                {
-                    SlotID = id,
-                    UserID = Userid,
-                    Slot = slot
- 
-                };
-                slot.Bookings.Add(booking);
-                db.Bookings.Add(booking);
-                db.SaveChanges();
-                return View("Book",slot);
+        public IActionResult CreateEvent([FromBody] Event newEvent){
+            if(newEvent == null){
+                return BadRequest();
             }
-            catch(SlotBookingException ex)
-            {
-                ViewBag.Error = ex.Message;
-                return View("Book", db.Slots.FirstOrDefault(s => s.SlotID == id));
+            db.CreateEvent(newEvent);
+            return CreatedAtAction(nameof(GetEventById),
+            new { eventId = newEvent.EventId},
+            newEvent);
+        }
+        [HttpPut("{eventId}")]
+        public IActionResult UpdateEvent(int eventId, [FromBody] Event updatedEvent){
+            if(updatedEvent == null){
+                return BadRequest();
             }
+            bool res = db.UpdateEvent(eventId, updatedEvent);
+            if(!res){
+                return NotFound();
+            }
+            return NoContent();
         }
-        public IActionResult Summary(int Userid)
-        {
-            var b=db.Bookings.Where(bb=>bb.UserID == Userid).ToList();
-            return View(b);
+        [HttpDelete("{eventId}")]
+        public IActionResult DeleteEvent(int eventId){
+            var res = db.GetEventById(eventId);
+            if(res == null){
+                return NotFound();
+            }
+            db.DeleteEvent(eventId);
+            return NoContent();
         }
- 
- 
-    }
-}
- 
- 
-using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using MusicianBookingSystem.Models;
- 
-namespace MusicianBookingSystem.Controllers
-{
-    public class HomeController : Controller
-    {
-        private readonly ILogger<HomeController> _logger;
- 
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
- 
-        public IActionResult Index()
-        {
-            return View();
-        }
- 
-        public IActionResult Privacy()
-        {
-            return View();
-        }
- 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
-    }
-}
- 
- 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using MusicianBookingSystem.Models;
- 
-namespace MusicianBookingSystem.Controllers
-{
-    // [Route("[controller]")]
-    public class SlotController : Controller
-    {
-        private readonly ApplicationDbContext db;
- 
-        public SlotController(ApplicationDbContext db1)
-        {
-            db=db1;
-        }
- 
-        public IActionResult Index()
-        {
-            var slots = db.Slots.ToList();
-            return View(slots);
-        }
-    }
-}
- 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
- 
-namespace MusicianBookingSystem.Exceptions
-{
-    public class SlotBookingException : Exception
-    {
-        public SlotBookingException (string message) : base(message) {}
-    }
-}
- 
- 
- 
-using System.Reflection.Emit;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using MusicianBookingSystem.Models;
-using System.Collections.Generic;
- 
-namespace MusicianBookingSystem.Models
-{
-    public class ApplicationDbContext : DbContext
-    {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext>options):base(options){}
- 
-        public DbSet<Slot>Slots{get;set;}
-         public DbSet<Booking> Bookings {get; set;}
        
     }
 }
@@ -176,73 +73,104 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
  
-namespace MusicianBookingSystem.Models
+namespace dotnetapp.Models
 {
-    public class Booking{
- 
-        public int BookingID {get; set;}
- 
-        public int SlotID {get; set;}
- 
-        public int UserID {get; set;}
- 
-        public Slot Slot {get; set;}
+    public class Event
+    {
+        public int EventId{get;set;}
+        public string Name{get;set;}
+        public DateTime Date{get;set;}
+        public string Location{get;set;}
     }
+   
 }
  
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+using dotnetapp.Models;
  
-namespace MusicianBookingSystem.Models
+namespace dotnetapp.Services
 {
-    public class Slot
+    public class EventService
     {
-        [Key]
-        public int SlotID{get;set;}
-        public DateTime Time{get;set;}
-        public int Duration{get;set;}
-        public int Capacity{get;set;}
-        public List<Booking> Bookings{get;set;}=new List<Booking>();
+        private List<Event> events = new List<Event>(){
+            new Event{
+                EventId = 1,
+                Name = "Event 1",
+                Date = DateTime.Now.AddDays(7),
+                Location = "Location 1"
+            },
+            new Event{
+                EventId = 2,
+                Name = "Event 2",
+                Date = DateTime.Now.AddDays(14),
+                Location = "Location 2"
+            },
+            new Event{
+                EventId = 3,
+                Name = "Event 3",
+                Date = DateTime.Now.AddDays(21),
+                Location = "Location 3"
+            }
+        };
+        public List<Event> GetAllEvents(){
+            return events;
+        }
+        public Event GetEventById(int eventId){
+            return events.FirstOrDefault(e => e.EventId == eventId);
+        }
+        public Event CreateEvent(Event newEvent){
+            newEvent.EventId = events.Max(e => e.EventId) + 1;
+            events.Add(newEvent);
+            return newEvent;
+        }
+        public bool UpdateEvent(int eventId, Event updatedEvent){
+            var ev = events.FirstOrDefault(e => e.EventId == eventId);
+            if(ev == null){
+                return false;
+            }
+            ev.Name = updatedEvent.Name;
+            ev.Date = updatedEvent.Date;
+            ev.Location = updatedEvent.Location;
+            return true;
+        }
+        public void DeleteEvent(int eventId){
+            var ev = events.FirstOrDefault(e => e.EventId == eventId);
+            if(ev != null){
+                events.Remove(ev);
+            }
+        }
     }
 }
  
-
-
+using dotnetapp.Services;
+using dotnetapp.Models;
  
 var builder = WebApplication.CreateBuilder(args);
  
+// Add Event services to the container.
  
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllers();
+builder.Services.AddSingleton<EventService>();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
  
 var app = builder.Build();
  
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
  
 app.UseHttpsRedirection();
-app.UseStaticFiles();
- 
-app.UseRouting();
  
 app.UseAuthorization();
  
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Slot}/{action=Index}/{id?}");
+app.MapControllers();
  
 app.Run();
- 
-Info
-A bill like a multitool and plumage full of colour
  
