@@ -1,623 +1,316 @@
-/////////////////DoctorController///////////////
-using dotnetapp.Models;
+1. src/app/models/login.model.ts
+
+export interface Login {
+
+  username: string;
+
+  password: string;
+
+}
  
-using Microsoft.AspNetCore.Mvc;
+2. src/app/services/auth.service.ts
+
+import { Injectable } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { Observable } from 'rxjs';
+
+import { Login } from '../models/login.model';
  
-using Microsoft.EntityFrameworkCore;
+@Injectable({
+
+  providedIn: 'root'
+
+})
+
+export class AuthService {
+
+  private apiUrl = 'https://8080-...premiumproject.examly.io/api/login';
  
-namespace dotnetapp.Controllers
+  constructor(private http: HttpClient) {}
  
-{
+  login(loginData: Login): Observable<any> {
+
+    return this.http.post<any>(this.apiUrl, loginData);
+
+  }
  
-    [Route("api/[controller]")]
+  isAuthenticated(): boolean {
+
+    return localStorage.getItem('isLoggedIn') === 'true';
+
+  }
  
-    [ApiController]
+  logout(): void {
+
+    localStorage.removeItem('isLoggedIn');
+
+  }
+
+}
+
+``
+
+/auth.guard.ts
  
-    public class DoctorController : ControllerBase
  
-    {
+import { Injectable } from '@angular/core';
+
+import { CanActivate, Router } from '@angular/router';
+
+import { AuthService } from '../services/auth.service';
  
-    private readonly ApplicationDbContext _context;
+@Injectable({
+
+  providedIn: 'root'
+
+})
+
+export class AuthGuard implements CanActivate {
+
+  constructor(private authService: AuthService, private router: Router) {}
  
-    public DoctorController(ApplicationDbContext context)
- 
-    {
- 
-    _context = context;
- 
+  canActivate(): boolean {
+
+    if (this.authService.isAuthenticated()) {
+
+      return true;
+
     }
+
+    this.router.navigate(['/error']);
+
+    return false;
+
+  }
+
+}
  
-    [HttpGet("GetDoctors")]
+adminpage.component.ts
  
-    public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
+import { Component } from '@angular/core';
+
+import { Router } from '@angular/router';
+
+import { AuthService } from '../../services/auth.service';
  
-    {
+@Component({
+
+  selector: 'app-adminpage',
+
+  templateUrl: './adminpage.component.html',
+
+  styleUrls: ['./adminpage.component.css']
+
+})
+
+export class AdminpageComponent {
+
+  constructor(private authService: AuthService, private router: Router) {}
  
-    try
- 
-    {
- 
-    return await _context.Doctors
- 
-    .Include(d => d.Patients)
- 
-    .ToListAsync();
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
- 
- 
-    [HttpPost("PostDoctor")]
- 
-public async Task<ActionResult<Doctor>> PostDoctor(Doctor doctor)
- 
-{
- 
-    try
- 
-    {
- 
-    _context.Doctors.Add(doctor);
- 
-    await _context.SaveChangesAsync();
- 
-   
-   
-    return Created("",doctor);
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
+  logout(): void {
+
+    this.authService.logout();
+
+    this.router.navigate(['/login']);
+
+  }
+
 }
  
  
-    [HttpPut("PutDoctor/{id}")]
- 
-    public async Task<IActionResult> PutDoctor(int id, Doctor doctor)
- 
-    {
- 
-    try
- 
-    {
- 
-    if (id != doctor.DoctorId)
- 
-    return BadRequest();
- 
-    _context.Entry(doctor).State = EntityState.Modified;
- 
-    await _context.SaveChangesAsync();
- 
-    return NoContent();
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    [HttpDelete("DeleteDoctor/{id}")]
- 
-    public async Task<IActionResult> DeleteDoctor(int id)
- 
-    {
- 
-    try
- 
-    {
- 
-    var doctor = await _context.Doctors.FindAsync(id);
- 
-    if (doctor == null)
- 
-    return NotFound();
- 
-    _context.Doctors.Remove(doctor);
- 
-    await _context.SaveChangesAsync();
- 
-    return NoContent();
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    }
- 
-}  
-////////////////patientController///////////////////
-                   
- 
- 
- 
-using dotnetapp.Models;
- 
-using Microsoft.AspNetCore.Mvc;
- 
-using Microsoft.EntityFrameworkCore;
- 
-namespace dotnetapp.Controllers
- 
-{
- 
-    [Route("api/[controller]")]
- 
-    [ApiController]
- 
-    public class PatientController : ControllerBase
- 
-    {
- 
-    private readonly ApplicationDbContext _context;
- 
-    public PatientController(ApplicationDbContext context)
- 
-    {
- 
-    _context = context;
- 
-    }
- 
-    [HttpGet("GetPatients")]
- 
-    public async Task<ActionResult<IEnumerable<Patient>>> GetPatients()
- 
-    {
- 
-    try
- 
-    {
- 
-    var patients = await _context.Patients
- 
-    .Include(p => p.Doctor)
- 
-    .ToListAsync();
- 
-    return Ok(patients);
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    [HttpPost("PostPatient")]
- 
-    public async Task<ActionResult<Patient>> PostPatient(Patient patient)
- 
-    {
- 
-    try
- 
-    {
- 
-    _context.Patients.Add(patient);
- 
-    await _context.SaveChangesAsync();
- 
-    return StatusCode(StatusCodes.Status201Created, patient);
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    [HttpPut("PutPatient/{id}")]
- 
-    public async Task<IActionResult> PutPatient(int id, Patient patient)
- 
-    {
- 
-    try
- 
-    {
- 
-    if (id != patient.PatientId)
- 
-    return BadRequest();
- 
-    _context.Entry(patient).State = EntityState.Modified;
- 
-    await _context.SaveChangesAsync();
- 
-    return NoContent();
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    [HttpDelete("DeletePatient/{id}")]
- 
-    public async Task<IActionResult> DeletePatient(int id)
- 
-    {
- 
-    try
- 
-    {
- 
-    var patient = await _context.Patients.FindAsync(id);
- 
-    if (patient == null)
- 
-    return NotFound();
- 
-    _context.Patients.Remove(patient);
- 
-    await _context.SaveChangesAsync();
- 
-    return NoContent();
- 
-    }
- 
-    catch (Exception ex)
- 
-    {
- 
-    return BadRequest(ex.Message);
- 
-    }
- 
-    }
- 
-    }
- 
-}
-//////////////////////////userController//////////////////////
-using dotnetapp.Models;
- 
-using Microsoft.AspNetCore.Mvc;
- 
-using Microsoft.EntityFrameworkCore;
- 
-namespace dotnetapp.Controllers
- 
-{
- 
-    [Route("api/users")]
- 
-    [ApiController]
- 
-    public class UserController : ControllerBase
- 
-    {
- 
-    private readonly ApplicationDbContext _context;
- 
-    public UserController(ApplicationDbContext context)
- 
-    {
- 
-    _context = context;
- 
-    }
- 
-    private bool IsValidRole(string role)
- 
-    {
- 
-    var validRoles = new[] { "Admin", "Organizer" };
- 
-    return validRoles.Contains(role);
- 
-    }
- 
-    [HttpPost("register")]
- 
-    public async Task<ActionResult<User>> Register(User user)
- 
-    {
- 
-    if (!IsValidRole(user.Role))
- 
-    return BadRequest("Invalid role");
- 
-    var existingUser = await _context.Users
- 
-    .FirstOrDefaultAsync(x => x.Username == user.Username);
- 
-    if (existingUser != null)
- 
-    return Conflict();
- 
-    _context.Users.Add(user);
- 
-    await _context.SaveChangesAsync();
- 
-    return CreatedAtAction(nameof(Register),
- 
-    new { id = user.Id }, user);
- 
-    }
- 
-    [HttpPost("login")]
- 
-    public async Task<ActionResult<object>> Login(LoginModel user)
- 
-    {
- 
-    var existingUser = await _context.Users
- 
-    .FirstOrDefaultAsync(x =>
- 
-    x.Username == user.Username &&
- 
-    x.Password == user.Password);
- 
-    if (existingUser == null)
- 
-    return BadRequest("Login failed");
- 
-    return Ok(new
- 
-    {
- 
-    Message = "Login successful",
- 
-    User = existingUser
- 
+adminpage.component.html
+ 
+ 
+<h1>Admin Page</h1>
+<p>Welcome Admin!</p>
+<button (click)="logout()">Logout</button>
+ 
+ 
+login.component.ts
+ 
+import { Component } from '@angular/core';
+
+import { Router } from '@angular/router';
+
+import { AuthService } from '../../services/auth.service';
+
+import { Login } from '../../models/login.model';
+ 
+@Component({
+
+  selector: 'app-login',
+
+  templateUrl: './login.component.html',
+
+  styleUrls: ['./login.component.css']
+
+})
+
+export class LoginComponent {
+
+  loginData: Login = { username: '', password: '' };
+
+  errorMessage: string = '';
+ 
+  constructor(private authService: AuthService, private router: Router) {}
+ 
+  login(): void {
+
+    this.authService.login(this.loginData).subscribe({
+
+      next: () => {
+
+        localStorage.setItem('isLoggedIn', 'true');
+
+        this.router.navigate(['/admin']);
+
+      },
+
+      error: () => {
+
+        this.errorMessage = 'Invalid username or password';
+
+      }
+
     });
- 
-    }
- 
-    }
- 
+
+  }
+
 }
  
- 
-/////////////////Models Doctor.cs/////////////////////////////
-using System.Collections.Generic;
- 
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
- 
-namespace dotnetapp.Models
- 
-{
- 
- public class Doctor
- 
- {
- 
- 
- 
- public int DoctorId { get; set; }
- 
- 
- 
- public string Name { get; set; }
- 
- 
- public string Specialization { get; set; }
- 
- public decimal ConsultationFee { get; set; }
- 
- 
- public ICollection<Patient>? Patients { get; set; }
- 
- }
- 
-}
-/////////////Model LoginModel.cs///////////////
-namespace dotnetapp.Models
- 
-{
- 
- public class LoginModel
- 
- {
- 
- public string Username { get; set; }
- 
- public string Password { get; set; }
- 
- }
- 
-}
-///////////////Model Patient.cs///////////////////
-using System;
- 
-using System.ComponentModel.DataAnnotations;
- 
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
- 
-namespace dotnetapp.Models
- 
-{
- 
- public class Patient
- 
- {
- 
- 
- 
- public int PatientId { get; set; }
- 
- 
- 
- public string Name { get; set; }
- 
- public int Age { get; set; }
- 
- 
- 
- public string Condition { get; set; }
- 
- public DateTime AppointmentDate { get; set; }
- 
- 
- 
- public int? DoctorId { get; set; }
- 
- 
- public Doctor? Doctor { get; set; }
- 
- }
- 
-}
-////////////////////Model User.cs////////////////
-namespace dotnetapp.Models
- 
-{
- 
- public class User
- 
- {
- 
- public long Id { get; set; }
- 
- public string Username { get; set; }
- 
- public string Password { get; set; }
- 
- public string Role { get; set; }
- 
- }
- 
-}
-//////////////////////Model ApplicationDbContext.cs//////////////////
-using Microsoft.EntityFrameworkCore;
- 
-namespace dotnetapp.Models
- 
-{
- 
- public class ApplicationDbContext : DbContext
- 
- {
- 
- public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
- 
- : base(options)
- 
- {
- 
- }
- 
- public DbSet<Doctor> Doctors { get; set; }
- 
- public DbSet<Patient> Patients { get; set; }
- 
- public DbSet<User> Users { get; set; }
- 
- protected override void OnModelCreating(ModelBuilder modelBuilder)
- 
- {
- 
- base.OnModelCreating(modelBuilder);
- 
- modelBuilder.Entity<Doctor>()
- 
- .HasMany(d => d.Patients)
- 
- .WithOne(p => p.Doctor)
- 
- .HasForeignKey(p => p.DoctorId)
- 
- .OnDelete(DeleteBehavior.Cascade);
- 
- }
- 
- }
- 
-}
- 
-/////////////////program.cs////////////
-using dotnetapp.Models;
-using Microsoft.EntityFrameworkCore;
- 
-var builder = WebApplication.CreateBuilder(args);
- 
- 
-// Add services to the container.
- 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddControllers()
- 
-    .AddJsonOptions(options =>
- 
-    {
- 
-    options.JsonSerializerOptions.PropertyNamingPolicy = null;
- 
-    });
-builder.Services.AddDbContext<ApplicationDbContext>(options=>options.UseSqlServer("User ID=sa;password=examlyMssql@123;server=localhost;Database=appdb;trusted_connection=false;Persist Security Info=False;Encrypt=False"));
- 
-var app = builder.Build();
- 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
- 
-app.UseHttpsRedirection();
- 
-app.UseAuthorization();
- 
-app.MapControllers();
- 
-app.Run();
- 
-Get started with Swashbuckle and ASP.NET Core | Microsoft Learn
-Learn how to add Swashbuckle to your ASP.NET Core web API project to integrate the Swagger UI.
+login.component.html
+ 
+<h1>Login</h1>
+<input type="text" placeholder="Username" [(ngModel)]="loginData.username" name="username" />
+<br>
+<input type="password" placeholder="Password" [(ngModel)]="loginData.password" name="password" />
+<br>
+<button (click)="login()">Login</button>
+<p style="color: red;" *ngIf="errorMessage">{{ errorMessage }}</p>
+ 
+ 
+/error.component.html
+ 
+<h1>Unauthorized Access</h1>
+<p>You are not authorized to view this page.</p>
+<a routerLink="/login">Go to Login</a>
+ 
+error.component.ts
+ 
+import { Component } from '@angular/core';
+ 
+@Component({
+
+  selector: 'app-error',
+
+  templateUrl: './error.component.html',
+
+  styleUrls: ['./error.component.css']
+
+})
+
+export class ErrorComponent {}
+ 
+ 
+app-routing.module.ts
+ 
+import { NgModule } from '@angular/core';
+
+import { RouterModule, Routes } from '@angular/router';
+
+import { LoginComponent } from './components/login/login.component';
+
+import { AdminpageComponent } from './components/adminpage/adminpage.component';
+
+import { ErrorComponent } from './components/error/error.component';
+
+import { AuthGuard } from './authguard/auth.guard';
+ 
+const routes: Routes = [
+
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
+
+  { path: 'login', component: LoginComponent },
+
+  { path: 'admin', component: AdminpageComponent, canActivate: [AuthGuard] },
+
+  { path: 'error', component: ErrorComponent },
+
+  { path: '**', redirectTo: '/login' }
+
+];
+ 
+@NgModule({
+
+  imports: [RouterModule.forRoot(routes)],
+
+  exports: [RouterModule]
+
+})
+
+export class AppRoutingModule {}
+ 
+/app.module.ts
+ 
+import { NgModule } from '@angular/core';
+
+import { BrowserModule } from '@angular/platform-browser';
+
+import { FormsModule } from '@angular/forms';
+
+import { HttpClientModule } from '@angular/common/http';
+ 
+import { AppRoutingModule } from './app-routing.module';
+
+import { AppComponent } from './app.component';
+
+import { LoginComponent } from './components/login/login.component';
+
+import { AdminpageComponent } from './components/adminpage/adminpage.component';
+
+import { ErrorComponent } from './components/error/error.component';
+
+import { AuthGuard } from './authguard/auth.guard';
+
+import { AuthService } from './services/auth.service';
+ 
+@NgModule({
+
+  declarations: [
+
+    AppComponent,
+
+    LoginComponent,
+
+    AdminpageComponent,
+
+    ErrorComponent
+
+  ],
+
+  imports: [
+
+    BrowserModule,
+
+    FormsModule,
+
+    HttpClientModule,
+
+    AppRoutingModule
+
+  ],
+
+  providers: [AuthGuard, AuthService],
+
+  bootstrap: [AppComponent]
+
+})
+
+export class AppModule {}
+ 
+app.component.html
+ 
+<router-outlet></router-outlet>
  
