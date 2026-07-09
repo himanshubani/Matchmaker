@@ -1,170 +1,219 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+// ==============================
+// FILE: src/app/guards/auth.guard.ts
+// ==============================
  
-namespace dotnetapp.Models
-{
-    public class Student
-    {
-        public int StudentId{get;set;}
-        public string Name {get;set;}
-        public int Age{get;set;}
-        public string Grade {get; set;}
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+ 
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+ 
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
+ 
+  canActivate(): boolean {
+    if (this.authService.isLoggedIn()) {
+      return true;
     }
+ 
+    this.router.navigate(['/login']);
+    return false;
+  }
 }
  
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
  
-using dotnetapp.Services;
-using dotnetapp.Models;
+// ==============================
+// FILE: src/app/services/auth.service.ts
+// ==============================
  
-namespace dotnetapp.Controllers
-{   [ApiController]
-    [Route("api/[controller]")]
-    public class StudentController : ControllerBase
-    {
-        private readonly StudentService db;
-        public StudentController(StudentService db1){
-            db = db1;
-        }
-        [HttpGet]
-        public IActionResult GetAllStudents(){
-            var students = db.GetAllStudents();
-            if(students == null || students.Count == 0){
-                return NoContent();
-            }
-            return Ok(students);
-        }
-        [HttpGet("{studentId}")]
-        public IActionResult GetStudentById(int studentId){
-            var student = db.GetStudentById(studentId);
-            if(student == null){
-                return NotFound();
-            }
-            return Ok(student);
-        }
-        [HttpPost]
-        public IActionResult CreateStudent(Student newStudent){
-            if(newStudent == null){
-                return BadRequest();
-            }
-            db.CreateStudent(newStudent);
-            return Created("", newStudent);
-        }
-        [HttpPut("{studentId}")]
-        public IActionResult UpdateStudent(int studentId, Student updatedStudent){
-            var res = db.UpdateStudent(studentId,updatedStudent);
-            if(!res){
-                return NotFound();
-            }
-            return NoContent();
-        }
-        [HttpDelete("{studentId}")]
-        public IActionResult DeleteStudent(int studentId){
-            var res = db.DeleteStudent(studentId);
-            if(!res){
-                return NotFound();
-            }
-            return NoContent();
-        }
-    }
-}
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using dotnetapp.Models;
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { JwtService } from './jwt.service';
  
-namespace dotnetapp.Services
-{
-    public class StudentService
-    {
-        private readonly List<Student> students;
-        public StudentService(){
-            students = new List<Student>(){
-                new Student{
-                    StudentId = 1,
-                    Name = "Alice",
-                    Age = 18,
-                    Grade = "A"
-                },
-                new Student{
-                    StudentId = 2,
-                    Name = "Bob",
-                    Age = 17,
-                    Grade = "B"
-                },
-                new Student{
-                    StudentId = 3,
-                    Name = "Charlie",
-                    Age = 16,
-                    Grade = "C"
-                }
-            };
-        }
-        public List<Student> GetAllStudents(){
-            return students;
-        }
-        public Student GetStudentById(int studentId){
-            return students.FirstOrDefault(s => s.StudentId == studentId);
-        }
-        public Student CreateStudent(Student newStudent){
-            students.Add(newStudent);
-            return newStudent;
-        }
-        public bool UpdateStudent(int studentId, Student updatedStudent){
-            var student = students.FirstOrDefault(s => s.StudentId == studentId);
-            if(student == null){
-                return false;
-            }
-            student.Name = updatedStudent.Name;
-            student.Age = updatedStudent.Age;
-            student.Grade = updatedStudent.Grade;
-            return true;
-        }
-        public bool DeleteStudent(int studentId){
-            var student = students.FirstOrDefault(s => s.StudentId == studentId);
-            if(student == null){
-                return false;
-            }
-            students.Remove(student);
-            return true;
-        }
-    }
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+ 
+  private apiUrl = 'api/login';
+ 
+  constructor(
+    private http: HttpClient,
+    private jwtService: JwtService
+  ) { }
+ 
+  login(username: string, password: string): Observable<any> {
+    return this.http.post<any>(this.apiUrl, {
+      username,
+      password
+    });
+  }
+ 
+  storeToken(token: string): void {
+    this.jwtService.saveToken(token);
+  }
+ 
+  logout(): void {
+    this.jwtService.destroyToken();
+  }
+ 
+  isLoggedIn(): boolean {
+    return this.jwtService.isLoggedIn();
+  }
 }
  
-using dotnetapp.Services;
-using dotnetapp.Models;
  
-var builder = WebApplication.CreateBuilder(args);
+// ==============================
+// FILE: src/app/services/jwt.service.ts
+// ==============================
  
-// Add Event services to the container.
+import { Injectable } from '@angular/core';
  
-builder.Services.AddControllers();
-builder.Services.AddSingleton<StudentService>(); // change this line here
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+@Injectable({
+  providedIn: 'root'
+})
+export class JwtService {
  
-var app = builder.Build();
+  saveToken(token: string): void {
+    localStorage.setItem('jwt_token', token);
+  }
  
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+  getToken(): string | null {
+    return localStorage.getItem('jwt_token');
+  }
+ 
+  destroyToken(): void {
+    localStorage.removeItem('jwt_token');
+  }
+ 
+  isLoggedIn(): boolean {
+    return this.getToken() !== null;
+  }
 }
  
-app.UseHttpsRedirection();
  
-app.UseAuthorization();
+// ==============================
+// FILE: src/app/components/dashboard/dashboard.component.ts
+// ==============================
  
-app.MapControllers();
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
  
-app.Run();
+@Component({
+  selector: 'app-dashboard',
+  templateUrl: './dashboard.component.html'
+})
+export class DashboardComponent {
  
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
+ 
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+}
+ 
+ 
+// ==============================
+// FILE: src/app/components/dashboard/dashboard.component.html
+// ==============================
+ 
+<h2>Dashboard</h2>
+<button (click)="logout()">Logout</button>
+ 
+ 
+// ==============================
+// FILE: src/app/components/login/login.component.ts
+// ==============================
+ 
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+ 
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html'
+})
+export class LoginComponent {
+ 
+  username = '';
+  password = '';
+ 
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
+ 
+  login(): void {
+    this.authService.login(this.username, this.password)
+      .subscribe((response: any) => {
+        this.authService.storeToken(response.token);
+        this.router.navigate(['/dashboard']);
+      });
+  }
+}
+ 
+ 
+// ==============================
+// FILE: src/app/components/login/login.component.html
+// ==============================
+ 
+<h2>Login</h2>
+ 
+<input [(ngModel)]="username" placeholder="Username">
+ 
+<input
+  type="password"
+  [(ngModel)]="password"
+  placeholder="Password">
+ 
+<button (click)="login()">Login</button>
+ 
+ 
+// ==============================
+// FILE: src/app/app-routing.module.ts
+// ==============================
+ 
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './components/login/login.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { AuthGuard } from './guards/auth.guard';
+ 
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+  { path: '', redirectTo: 'login', pathMatch: 'full' }
+];
+ 
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+ 
+ 
+// ==============================
+// FILE: src/app/app.module.ts
+// ==============================
+ 
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+ 
+imports: [
+  BrowserModule,
+  FormsModule,
+  HttpClientModule
+]
