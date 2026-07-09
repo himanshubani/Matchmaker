@@ -1,273 +1,214 @@
-1. models/login.model.ts
-export interface Login {
-  username: string;
-  password: string;
+c/app/services/jwt.service.ts =========
+ 
+import { Injectable } from '@angular/core';
+ 
+@Injectable({
+  providedIn: 'root'
+})
+export class JwtService {
+  private readonly TOKEN_KEY = 'jwt_token';
+ 
+  saveToken(token: string): void {
+    localStorage.setItem(this.TOKEN_KEY, token);
+  }
+ 
+  getToken(): string | null {
+    return localStorage.getItem(this.TOKEN_KEY);
+  }
+ 
+  destroyToken(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+  }
+ 
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
 }
-
-2. services/auth.service.ts
+ 
+ 
+src/app/services/auth.service.ts
+ 
+ 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Login } from '../models/login.model';
-
+import { JwtService } from './jwt.service';
+ 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-
-  private apiUrl = 'https://8080--premiumproject.examly.io/api/login';
-
-  constructor(private http: HttpClient) { }
-
-  login(loginData: Login): Observable<any> {
-    return this.http.post<any>(this.apiUrl, loginData);
+  private apiUrl = 'https://8080-...premiumproject.examly.io/api/login';
+ 
+  constructor(private http: HttpClient, private jwtService: JwtService) {}
+ 
+  login(username: string, password: string): Observable<any> {
+    return this.http.post<any>(this.apiUrl, { username, password });
   }
-
-  isAuthenticated(): boolean {
-    return localStorage.getItem('isLoggedIn') === 'true';
+ 
+  storeToken(token: string): void {
+    this.jwtService.saveToken(token);
   }
-
+ 
   logout(): void {
-    localStorage.removeItem('isLoggedIn');
+    this.jwtService.destroyToken();
+  }
+ 
+  isLoggedIn(): boolean {
+    return this.jwtService.isLoggedIn();
   }
 }
-
-3. authguard/auth.guard.ts
+ 
+app/components/authguard/auth.guard.ts
+ 
 import { Injectable } from '@angular/core';
-import {
-  CanActivate,
-  Router
-} from '@angular/router';
-import { AuthService } from '../services/auth.service';
-
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+ 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) { }
-
+  constructor(private authService: AuthService, private router: Router) {}
+ 
   canActivate(): boolean {
-
-    if (this.authService.isAuthenticated()) {
+    if (this.authService.isLoggedIn()) {
       return true;
     }
-
-    this.router.navigate(['/error']);
+    this.router.navigate(['/login']);
     return false;
   }
 }
-
-4. components/userpage/userpage.component.ts
+ 
+ 
+dashboard/dashboard.component.ts
+ 
+ 
+ 
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-
+ 
 @Component({
-  selector: 'app-userpage',
-  templateUrl: './userpage.component.html',
-  styleUrls: ['./userpage.component.css']
+  selector: 'app-dashboard',
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css']
 })
-export class UserpageComponent {
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) { }
-
+export class DashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+ 
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
 }
-
-5. components/userpage/userpage.component.html
-<h1>User Page</h1>
-
-<h2>Welcome User!</h2>
-
-<button (click)="logout()">
-  Logout
-</button>
-
-6. components/login/login.component.ts
+dashboard.component.html
+ 
+<h1>Dashboard</h1>
+<p>Welcome to your dashboard!</p>
+<button (click)="logout()">Logout</button>
+ 
+ 
+login/login.component.ts
+ 
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { Login } from '../../models/login.model';
-
+ 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-
-  loginData: Login = {
-    username: '',
-    password: ''
-  };
-
+  username: string = '';
+  password: string = '';
   errorMessage: string = '';
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) { }
-
+ 
+  constructor(private authService: AuthService, private router: Router) {}
+ 
   login(): void {
-
-    this.authService.login(this.loginData).subscribe({
-
-      next: (response) => {
-
-        localStorage.setItem('isLoggedIn', 'true');
-        this.router.navigate(['/user']);
+    this.authService.login(this.username, this.password).subscribe({
+      next: (response: any) => {
+        if (response && response.token) {
+          this.authService.storeToken(response.token);
+        }
+        this.router.navigate(['/dashboard']);
       },
-
       error: () => {
-
         this.errorMessage = 'Invalid username or password';
       }
     });
   }
 }
-`
-7. components/login/login.component.html
+ 
+in/login.component.html
+ 
+ 
 <h1>Login</h1>
-
-<div>
-  <input
-    type="text"
-    placeholder="Username"
-    [(ngModel)]="loginData.username">
-</div>
-
+<input type="text" placeholder="Username" [(ngModel)]="username" name="username" />
 <br>
-
-<div>
-  <input
-    type="password"
-    placeholder="Password"
-    [(ngModel)]="loginData.password">
-</div>
-
+<input type="password" placeholder="Password" [(ngModel)]="password" name="password" />
 <br>
-
-<button (click)="login()">
-  Login
-</button>
-
-<p
-  *ngIf="errorMessage"
-  style="color:red">
-  {{ errorMessage }}
-</p>
-
-8. components/error/error.component.html
-<h1>Unauthorized Access</h1>
-
-<p>
-  You are not authorized to view this page.
-</p>
-
-<a routerLink="/login">
-  Go to Login
-</a>
-
-9. app-routing.module.ts
+<button (click)="login()">Login</button>
+<p style="color: red;" *ngIf="errorMessage">{{ errorMessage }}</p>
+ 
+ 
+p/app-routing.module.ts =======
+ 
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-
 import { LoginComponent } from './components/login/login.component';
-import { UserpageComponent } from './components/userpage/userpage.component';
-import { ErrorComponent } from './components/error/error.component';
-
-import { AuthGuard } from './authguard/auth.guard';
-
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { AuthGuard } from './components/authguard/auth.guard';
+ 
 const routes: Routes = [
-  {
-    path: '',
-    redirectTo: 'login',
-    pathMatch: 'full'
-  },
-  {
-    path: 'login',
-    component: LoginComponent
-  },
-  {
-    path: 'user',
-    component: UserpageComponent,
-    canActivate: [AuthGuard]
-  },
-  {
-    path: 'error',
-    component: ErrorComponent
-  },
-  {
-    path: '**',
-    redirectTo: 'login'
-  }
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent },
+  { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+  { path: '**', redirectTo: '/login' }
 ];
-
+ 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule]
 })
-export class AppRoutingModule { }
-
-10. app.module.ts
+export class AppRoutingModule {}
+ 
+ 
+c/app/app.module.ts==================
+ 
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
-imports: [
-  BrowserModule,
-  AppRoutingModule,
-  FormsModule,
-  HttpClientModule
-]
-declarations: [
-  AppComponent,
-  LoginComponent,
-  UserpageComponent,
-  ErrorComponent
-]
-
-11. app.component.html
+ 
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { LoginComponent } from './components/login/login.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { AuthGuard } from './components/authguard/auth.guard';
+import { AuthService } from './services/auth.service';
+import { JwtService } from './services/jwt.service';
+ 
+@NgModule({
+  declarations: [
+    AppComponent,
+    LoginComponent,
+    DashboardComponent
+  ],
+  imports: [
+    BrowserModule,
+    FormsModule,
+    HttpClientModule,
+    AppRoutingModule
+  ],
+  providers: [AuthGuard, AuthService, JwtService],
+  bootstrap: [AppComponent]
+})
+export class AppModule {}
+ 
+ 
+/app.component.html
+ 
 <router-outlet></router-outlet>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
