@@ -1,588 +1,292 @@
-
-
-Session 2 Cod 2
-
-src/app/services/jwt.service.ts
-
+Models
+==============
+Bus.models.ts
+export interface Bus
+{
+bookingId?:number;
+busNumber:string;
+routeSource:string;
+routeDestination:string;
+passengerName:string;
+bookingDate:string;
+}
+//heart of system without this nothing is possible
+Services
+Bus.services.ts
 import { Injectable } from '@angular/core';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class JwtService {
-
-  saveToken(token: string): void {
-    localStorage.setItem('jwt_token', token);
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('jwt_token');
-  }
-
-  destroyToken(): void {
-    localStorage.removeItem('jwt_token');
-  }
-
-  isLoggedIn(): boolean {
-    return !!this.getToken();
-  }
-}
-
-src/app/services/auth.service.ts
-
-import { Injectable } from '@angular/core';
-import { JwtService } from './jwt.service';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-
-  constructor(private jwtService: JwtService) {}
-
-  storeToken(token: string): void {
-    this.jwtService.saveToken(token);
-  }
-
-  logout(): void {
-    this.jwtService.destroyToken();
-  }
-
-  isLoggedIn(): boolean {
-    return this.jwtService.isLoggedIn();
-  }
-
-  login(username: string, password: string): any {
-    return {
-      subscribe: (fn: any) => fn({ token: 'token' })
-    };
-  }
-}
-
-src/app/components/authguard/auth.guard.ts
-
-import { Injectable } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthGuard {
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  canActivate(): boolean {
-
-    if (this.authService.isLoggedIn()) {
-      return true;
-    }
-
-    this.router.navigate(['/login']);
-    return false;
-  }
-}
-
-src/app/components/login/login.component.ts
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-login',
-  templateUrl: './login.component.html'
-})
-export class LoginComponent {
-
-  username = '';
-  password = '';
-  errorMessage = '';
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  login(): void {
-
-    this.authService
-      .login(this.username, this.password)
-      .subscribe((res: any) => {
-
-        this.authService.storeToken(res.token);
-        this.router.navigate(['/profile']);
-
-      });
-  }
-}
-
-src/app/components/login/login.component.html
-
-<input [(ngModel)]="username">
-<input [(ngModel)]="password">
-<button (click)="login()">Login</button>
-
-src/app/components/profile/profile.component.ts
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-profile',
-  templateUrl: './profile.component.html'
-})
-export class ProfileComponent {
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-}
-
-src/app/components/profile/profile.component.html
-
-<button (click)="logout()">Logout</button>
-
-src/app/app.module.ts
-
-import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-
-import { AppComponent } from './app.component';
-import { LoginComponent } from './components/login/login.component';
-import { ProfileComponent } from './components/profile/profile.component';
-
-@NgModule({
-  declarations: [
-    AppComponent,
-    LoginComponent,
-    ProfileComponent
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule
-  ],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
-
-src/app/app.component.html
-
-Empty file
-
-================================
-
-session 3 cod 1
-
-auth.service.ts
-
-
-
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { tap } from 'rxjs/operators';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-
-  public apiUrl = 'https://8080---premiumproject.examly.io/api/login';
-
-  constructor(private http: HttpClient) {}
-
-  login(username: string, password: string) {
-
-    return this.http.post<any>(this.apiUrl, {
-      username,
-      password
-    }).pipe(
-      tap((res: any) => {
-        if (res && res.token) {
-          localStorage.setItem('token', res.token);
-        }
-      })
-    );
-  }
-
-  logout(): void {
-    localStorage.removeItem('token');
-  }
-}
-
-
-auth.interceptor.ts
-
-
-import { Injectable } from '@angular/core';
-import {
-  HttpInterceptor,
-  HttpRequest,
-  HttpHandler
-} from '@angular/common/http';
-
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-
-  intercept(req: HttpRequest<any>, next: HttpHandler) {
-
-    const token = localStorage.getItem('token');
-
-    if (token) {
-      req = req.clone({
-        setHeaders: {
-          Authorization:`Bearer ${token}`
-        }
-      });
-    }
-
-    return next.handle(req);
-  }
-}
-
-login.component.ts
-
-
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-login',
-  templateUrl: './login.component.html'
-})
-export class LoginComponent {
-
-  username = '';
-  password = '';
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  login(): void {
-
-    this.authService
-      .login(this.username, this.password)
-      .subscribe(() => {
-
-    this.router.navigate(['/dashboard']);
-
-    });
-
-  }
-
-}
-
-
-login.component.html
-
-
-<button (click)="login()">Login `</button>`
-
-dashboard.component.ts
-
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-dashboard',
-  templateUrl: './dashboard.component.html'
-})
-export class DashboardComponent {
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  logout(): void {
-
-    this.authService.logout();
-    this.router.navigate(['/login']);
-
-  }
-
-}
-
-
-dashboard.component.html
-
-<button (click)="logout()">Logout `</button>`
-
-app.module.ts
-
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-
-import { AppComponent } from './app.component';
-import { LoginComponent } from './components/login/login.component';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
-
-@NgModule({
-  declarations: [
-    AppComponent,
-    LoginComponent,
-    DashboardComponent
-  ],
-  imports: [
-    BrowserModule
-  ],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
-
-
-app.component.ts
-
-import { Component } from '@angular/core';
-
-@Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
-})
-export class AppComponent {
-  title = 'angularapp';
-}
-
-
-app.component.html
-
-<p></p>
-
-======================
-
-Session 3 cod 2
-
-login.component.ts
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-login',
-  templateUrl: './login.component.html'
-})
-export class LoginComponent {
-
-  username = '';
-  password = '';
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
-  login(): void {
-
-    this.authService
-      .login(this.username, this.password)
-      .subscribe(() => {
-
-    this.router.navigate(['/profile']);
-
-    });
-  }
-
-}
-
-
-login.component.html
-
-
-<button (click)="login()">Login `</button>`
-
-profile.component.ts
-
-
-import { Component } from '@angular/core';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-profile',
-  templateUrl: './profile.component.html'
-})
-export class ProfileComponent {
-
-  profileData: any;
-
-  constructor(private authService: AuthService) {}
-
-  loadProfile(): void {
-
-    this.authService
-      .getProfile()
-      .subscribe(data => {
-
-    this.profileData = data;
-
-    });
-  }
-
-}
-
-
-profile.component.html
-
-<button (click)="loadProfile()">Load `</button>`
-
-
-interceptors
-
-import { Injectable } from '@angular/core';
-import {
-  HttpInterceptor,
-  HttpRequest,
-  HttpHandler,
-  HttpEvent,
-  HttpResponse
-} from '@angular/common/http';
-
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
-@Injectable()
-export class LoggingInterceptor implements HttpInterceptor {
-
-  intercept(
-    req: HttpRequest<any>,
-    next: HttpHandler
-  ): Observable<HttpEvent<any>> {
-
-    console.log('Request URL:', req.url);
-    console.log('Request Method:', req.method);
-
-    return next.handle(req).pipe(
-      tap((event: any) => {
-        if (event instanceof HttpResponse) {
-          console.log('Response Status:', event.status);
-        }
-      })
-    );
-  }
-}
-
-auth.service.ts
-
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-
+import { Bus } from '../models/bus.model';
+import {HttpClient} from '@angular/common/http';
 @Injectable({
-  providedIn: 'root'
+providedIn: 'root'
 })
-export class AuthService {
-
-  apiUrl = 'https://8080---premiumproject.examly.io/api';
-
-  constructor(private http: HttpClient) {}
-
-  login(username: string, password: string) {
-    return this.http.post(`${this.apiUrl}/login`, {
-      username,
-      password
-    });
-  }
-
-  getProfile() {
-    return this.http.get(`${this.apiUrl}/profile`);
-  }
-
+export class BusService {
+private apiUrl='https://8080-
+fedcdeaabaac352196661ffdbabfeone.premiumproject.examly.io';
+constructor(private objHttpClient:HttpClient) 
+{ 
 }
-
-app.component.html
-
-<p></p>
-
-
-app.component.ts
-
-import { Component } from '@angular/core';
-
+addBus(bus:Bus):Observable<Bus>
+{
+//first parameter is url and 2nd is object
+return this.objHttpClient.post<Bus>(`${this.apiUrl}/api/Bus`,bus);
+}
+//it will return bus array
+getBuses():Observable<Bus[]>
+{
+return this.objHttpClient.get<Bus[]>(`${this.apiUrl}/api/Bus`);
+}
+getBusById(bookingId:number):Observable<Bus>{
+return this.objHttpClient.get<Bus>(`${this.apiUrl}/api/Bus/${bookingId}`);
+}
+updateBus(bookingId:number,bus:Bus):Observable<Bus>
+{
+return this.objHttpClient.put<Bus>(`${this.apiUrl}/api/Bus/${bookingId}`,bus);
+}
+deleteBus(bookingId:number):Observable<void>
+{
+return this.objHttpClient.delete<void>(`${this.apiUrl}/api/Bus/${bookingId}`);
+}
+}
+Header.component.html
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<h1 class="navbar brand">Bus Booking Platform</h1>
+<div class="ml-auto">
+<a routerLink="/addNewBus" class="btn btn-primarytext-white">Add New Bus</a>
+<a routerLink="/viewBuses" class="btn btn-primarytext-white">View Bus</a>
+</div>
+</nav>
+Bus-form.components
+Bus-form.component.ts
+import { Component, OnInit } from '@angular/core';
+import { BusService } from '../services/bus.service';
+import { Bus } from '../models/bus.model';
+import { Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+selector: 'app-bus-form',
+templateUrl: './bus-form.component.html',
+styleUrls: ['./bus-form.component.css']
 })
-export class AppComponent {
-  title = 'angularapp';
+export class BusFormComponent implements OnInit{
+newBus: Bus={
+routeSource:'',
+routeDestination:'',
+busNumber:'',
+passengerName:'',
+bookingDate:''
 }
-
-
-app.module.ts
-
+isEditMode:boolean;
+constructor(private busService:BusService,private router:Router,private 
+route:ActivatedRoute){
+}
+ngOnInit(): void {
+const id=this.route.snapshot.paramMap.get('id');
+if(id){
+this.isEditMode=true;
+this.busService.getBusById(+id).subscribe(bus=>this.newBus=bus)
+}
+}
+addOrEditBus()
+{
+if(this.isEditMode)
+{
+this.busService.updateBus(this.newBus.bookingId,this.newBus).subscribe(()=>thi
+s.router.navigate(['viewBuses']));
+}
+else{
+this.busService.addBus(this.newBus).subscribe(()=>this.router.navigate(['viewBus
+es']));
+}
+}
+}
+//(+id) + is used for type casting 
+//
+Bus-form.comonent.html
+<form #busForm="ngForm" (ngSubmit)="addOrEditBus()">
+<div class="form-group">
+<label>Bus Number:</label>
+<input type="text" class="form-control" id="busNumber" name="busNumber" 
+[(ngModel)]="newBus.busNumber" required>
+<div class="error-message" *ngIf="busForm.submitted && 
+!newBus.busNumber">Bus Number is required</div>
+</div>
+<div class="form-group">
+<label>Route Source:</label>
+<input type="text" class="form-control" name="routeSource" id="routeSource" 
+[(ngModel)]="newBus.routeSource" required>
+<div class="error-message" *ngIf="busForm.submitted && 
+!newBus.routeSource">Route Source is required</div>
+</div>
+<div class="form-group">
+<label >Route Destination:</label>
+<input type="text" class="form-control" name="routeDestination" 
+id="routeDestination" [(ngModel)]="newBus.routeDestination" required>
+<div class="error-message" *ngIf="busForm.submitted && 
+!newBus.routeDestination">Route Destination is required</div>
+</div>
+<div class="form-group">
+<label>Passenger Name:</label>
+<input type="text" class="form-control" name="passengerName" 
+id="passengerName" [(ngModel)]="newBus.passengerName" required>
+<div class="error-message" *ngIf="busForm.submitted && 
+!newBus.passengerName">Passenger Name is required</div>
+</div>
+<div class="form-group">
+<label>Booking Date:</label>
+<input type="date" class="form-control" name="bookingDate" id="bookingDate" 
+[(ngModel)]="newBus.bookingDate" required>
+<div class="error-message" *ngIf="busForm.submitted && 
+!newBus.bookingDate">Booking Date is required</div>
+</div>
+<button type="submit">{{isEditMode?'Update Bus':'Add Bus'}}</button>
+</form>
+Bus-list.components
+bus-list.component.ts
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { BusService } from '../services/bus.service';
+import { Bus } from '../models/bus.model';
+@Component({
+selector: 'app-bus-list',
+templateUrl: './bus-list.component.html',
+styleUrls: ['./bus-list.component.css']
+})
+export class BusListComponent implements OnInit {
+buses:Bus[]=[];
+constructor(private busService:BusService,private route:Router){
+}
+ngOnInit(): void {
+this.loadBuses();
+}
+loadBuses(){
+this.busService.getBuses().subscribe(buses=>this.buses=buses);
+}
+editBus(bookingId:number):void{
+this.route.navigate([`/editBus/${bookingId}`]);
+}
+deleteBus(bookingId:number):void{
+this.route.navigate([`/confirmDelete/${bookingId}`]);
+}
+}
+Bus-list.component.html
+<table>
+<thead>
+<tr>
+<th>Bus Number</th>
+<th>Route Source</th>
+<th>Route Destination</th>
+<th>Passenger Name</th>
+<th>Booking Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr *ngFor="let bus of buses">
+<td>{{bus.busNumber}}</td>
+<td>{{bus.routeSource}}</td>
+<td>{{bus.routeDestination}}</td>
+<td>{{bus.passengerName}}</td>
+<td>{{bus.bookingDate | date: 'mediumDate'}}</td>
+<td>
+<button class="edit-button" id="edit" 
+(click)="editBus(bus.bookingId!)">Edit</button>
+<button class="delete-button" id="delete" 
+(click)="deleteBus(bus.bookingId!)">Delete</button>
+</td>
+</tr>
+</tbody>
+</table>
+Delete-confirm.components
+Delete-confirm.component.ts
+import { Component, OnInit } from '@angular/core';
+import { Bus } from '../models/bus.model';
+import { BusService } from '../services/bus.service';
+import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
+@Component({
+selector: 'app-delete-confirm',
+templateUrl: './delete-confirm.component.html',
+styleUrls: ['./delete-confirm.component.css']
+})
+export class DeleteConfirmComponent implements OnInit{
+bus:Bus;
+constructor (private busService:BusService,private route:ActivatedRoute,private 
+router:Router){
+}
+ngOnInit(): void {
+this.route.params.subscribe(params=>{const bookingId =+params['id'];
+this.busService.getBusById(bookingId).subscribe(bus=>this.bus=bus)});
+}
+confirmDelete(bookingId:number):void{
+this.busService.deleteBus(bookingId).subscribe(()=>{this.router.navigate(['/viewBus
+es'])});
+}
+cancelDelete():void{
+this.router.navigate(['/viewBuses']);
+}
+}
+Delete-confirm.component.html
+<h2>Delete Confirmation</h2>
+<p>Are you sure you want to delete this bus?</p>
+<p>Bus Number: {{bus?.busNumber}}</p>
+<p>Route Source: {{bus?.routeSource}}</p>
+<p>Route Destination: {{bus?.routeDestination}}</p>
+<p>Passenger Name: {{bus?.passengerName}}</p>
+<p>Booking Date: {{bus?.bookingDate}}</p>
+<button class="confirm-button" type="button" 
+(click)="confirmDelete(bus?.bookingId!)">Confirm Delete</button>
+<button class="cancel-button" type="button" 
+(click)="cancelDelete()">Cancel</button>
+App.module.ts
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
-
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { LoginComponent } from './components/login/login.component';
-import { ProfileComponent } from './components/profile/profile.component';
-import { LoggingInterceptor } from './interceptors/logging.interceptor';
-
+import { HeaderComponent } from './header/header.component';
+import { BusFormComponent } from './bus-form/bus-form.component';
+import { BusListComponent } from './bus-list/bus-list.component';
+import { DeleteConfirmComponent } from './delete-confirm/delete-confirm.component';
 @NgModule({
-  declarations: [
-    AppComponent,
-    LoginComponent,
-    ProfileComponent
-  ],
-  imports: [
-    BrowserModule,
-    HttpClientModule
-  ],
-  providers: [
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: LoggingInterceptor,
-      multi: true
-    }
-  ],
-  bootstrap: [AppComponent]
+declarations: [
+AppComponent,
+HeaderComponent,
+BusFormComponent,
+BusListComponent,
+DeleteConfirmComponent
+],
+imports: [
+BrowserModule,
+AppRoutingModule,
+FormsModule,
+HttpClientModule
+],
+providers: [],
+bootstrap: [AppComponent]
 })
 export class AppModule { }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+app.component.html
+<app-header></app-header>
+<router-outlet></router-outlet>
+App-rounting.module.ts
+===
+import { NgModule } from '@angular/core';
+//handles all the routing 
+import { RouterModule, Routes } from '@angular/router';
+import { HeaderComponent } from './header/header.component';
+import { BusFormComponent } from './bus-form/bus-form.component';
+import { BusListComponent } from './bus-list/bus-list.component';
+import { DeleteConfirmComponent } from './delete-confirm/delete-confirm.component';
+const routes: Routes = [
+{path :'addNewBus',component:BusFormComponent },
+{path :'viewBuses', component:BusListComponent },
+{path: 'editBus/:id',component:BusFormComponent},
+{path: 'confirmDelete/:id',component:DeleteConfirmComponent}
+];
+@NgModule({
+imports: [RouterModule.forRoot(routes)],
+exports: [RouterModule]
+})
+export class AppRoutingModule { }
